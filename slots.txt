@@ -1,0 +1,5 @@
+# GSLauncher's slots: an app a line, name=path ("*" is the boot disk).
+# GSLauncher writes this file again when you change the slots.
+GS Commander=*:GSCommander:GSCommander
+MegaconvertGS=*:MegaconvertGS:MegaconvertGS
+Conquer GS=*:ConquerGS2:CONQUER.SYSTEM
