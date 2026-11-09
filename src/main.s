@@ -309,7 +309,9 @@ Fatal       Tool  _SysBeep
 *-------------------------------------------------------------
 * Menus
 *-------------------------------------------------------------
-MakeMenus   PushLong EditMenu
+MakeMenus   PushLong HelpMenu
+            jsr   AddMenu
+            PushLong EditMenu
             jsr   AddMenu
             PushLong FileMenu
             jsr   AddMenu
@@ -372,6 +374,10 @@ MenuTab     da    iAbout,About
             da    iLeft,MoveLeft
             da    iRight,MoveRight
             da    iQuit,QuitFinder
+            da    iHelp1,Help1
+            da    iHelp2,Help2
+            da    iHelp3,Help3
+            da    iHelp4,Help4
             da    0
 
 iQuit       equ   256
@@ -383,6 +389,101 @@ iRename     equ   263
 iRemove     equ   264
 iLeft       equ   265
 iRight      equ   266
+iHelp1      equ   267
+iHelp2      equ   268
+iHelp3      equ   269
+iHelp4      equ   270
+
+Help1       ldx   #Page1
+            jmp   ShowPage
+Help2       ldx   #Page2
+            jmp   ShowPage
+Help3       ldx   #Page3
+            jmp   ShowPage
+Help4       ldx   #Page4
+            jmp   ShowPage
+
+* ShowPage: X = a page: a list of C string addresses, 0 at the end,
+* the first is the title. Shown in a window until a click or a key.
+ShowPage    stx   SP1
+            ldy   #0                ; its lines: the window's height
+:n          lda   (SP1),y
+            beq   :cnt
+            iny
+            iny
+            bra   :n
+:cnt        tya
+            lsr
+            sta   PageN
+            asl                     ; * 12
+            clc
+            adc   PageN
+            asl
+            asl
+            adc   #20
+            sta   T0                ; (a title line, and 2 extra)
+            lda   #30
+            sta   HelpParms+62
+            clc
+            adc   T0
+            sta   HelpParms+66
+            pha
+            pha
+            PushLong HelpParms
+            Tool  _NewWindow
+            pla
+            sta   InWin
+            pla
+            sta   InWin+2
+            PushLongAt InWin
+            Tool  _SetPort
+            pea   $0000
+            Tool  _SetForeColor
+            pea   $000F
+            Tool  _SetBackColor
+            lda   T0
+            sta   HelpRect+4
+            PushLong HelpRect
+            Tool  _EraseRect
+            ldy   #0
+            lda   #14
+            sta   PY
+:l          lda   (SP1),y
+            beq   :wait0
+            phy
+            tax
+            lda   #12
+            sta   PX
+            jsr   DrawAt
+            ply
+            iny
+            iny
+            lda   PY
+            clc
+            adc   #12
+            sta   PY
+            cpy   #2                ; (a gap under the title)
+            bne   :l
+            adc   #4
+            sta   PY
+            bra   :l
+:wait0      pha                     ; (events from the menu click: gone)
+            pea   $FFFF
+            pea   0
+            Tool  _FlushEvents
+            pla
+:wait       pha
+            pea   $000A             ; a click or a key
+            PushLong EvRec2
+            Tool  _GetNextEvent
+            pla
+            beq   :wait
+            PushLongAt InWin
+            Tool  _CloseWindow
+            jmp   UsePort
+PagePtr     dw    0
+PageN       dw    0
+HelpRect    dw    0,0,0,560
 
 About       ldx   #AboutTx
 * Alert: X = an alert string (AlertWindow's form)
@@ -2214,6 +2315,26 @@ InParms     dw    78
             adrl  $FFFFFFFF
             adrl  0
 
+HelpParms     dw    78
+            dw    $2020             ; an alert frame, visible
+            adrl  0
+            adrl  0
+            dw    0,0,0,0
+            adrl  0
+            dw    0,0
+            dw    0,0
+            dw    0,0
+            dw    0,0
+            dw    0,0
+            adrl  0
+            dw    0
+            adrl  0
+            adrl  0
+            adrl  0
+            dw    30,40,200,600
+            adrl  $FFFFFFFF
+            adrl  0
+
 TitleTx     db    12
             asc   ' GSLauncher '
 EditTitleTx db    26
@@ -2235,6 +2356,12 @@ FileMenu    asc   '>>  File  \N2',00
             asc   '--Move Right\N266V',00
             asc   '--Quit to Finder\N256*Qq',00
             asc   '.',00
+HelpMenu    asc   '>>  Help  \N4',00
+            asc   '--Starting Apps\N267',00
+            asc   '--Editing the Slots\N268',00
+            asc   '--The Menu Entries\N269',00
+            asc   '--The Slots File\N270',00
+            asc   '.',00
 EditMenu    asc   '>>  Edit  \N3',00
             asc   '--Undo\N250*Zz',00
             asc   '--Cut\N251*Xx',00
@@ -2242,6 +2369,41 @@ EditMenu    asc   '>>  Edit  \N3',00
             asc   '--Paste\N253*Vv',00
             asc   '--Clear\N254',00
             asc   '.',00
+
+
+Page1       da    P1a,P1b,P1c,P1d,P1e,P1f,0
+P1a         asc   'Starting Apps',00
+P1b         asc   'Click an icon and its app starts. When you quit that app, you are',00
+P1c         asc   'back in GSLauncher.',00
+P1d         asc   'The date under a name is when the file was last changed.',00
+P1e         asc   'A dimmed icon with "not found" under it: the file is missing.',00
+P1f         asc   'GSLauncher starts S16 and ProDOS 8 SYS files.   (Click or press a key.)',00
+Page2       da    P2a,P2b,P2c,P2d,P2e,P2f,P2g,0
+P2a         asc   'Editing the Slots',00
+P2b         asc   'Add App (Apple-N): pick an app; it goes into the next free slot.',00
+P2c         asc   'To change a slot: choose Edit Slots (Apple-E). A click then picks',00
+P2d         asc   'a slot (a frame appears) instead of starting it. The arrow keys',00
+P2e         asc   'pick the next one. Then use Change, Rename, Remove or Move.',00
+P2f         asc   'Choose Edit Slots again, or press Esc, to start apps again.',00
+P2g         asc   '(Click or press a key.)',00
+Page3       da    P3a,P3b,P3c,P3d,P3e,P3f,P3g,P3h,P3i,P3j,0
+P3a         asc   'The Menu Entries',00
+P3b         asc   'Add App:  an app into a new slot.',00
+P3c         asc   'Edit Slots:  a click picks a slot instead of starting it.',00
+P3d         asc   'Change Slot:  another app for the picked slot.',00
+P3e         asc   'Rename Slot:  the name under the icon (empty: the file name).',00
+P3f         asc   'Remove Slot:  the picked slot goes.',00
+P3g         asc   'Move Left, Move Right:  change the order of the slots.',00
+P3h         asc   'Quit to Finder:  starts the Finder.',00
+P3i         asc   'Change, Rename, Remove and Move need Edit Slots and a picked slot.',00
+P3j         asc   '(Click or press a key.)',00
+Page4       da    P4a,P4b,P4c,P4d,P4e,P4f,0
+P4a         asc   'The Slots File',00
+P4b         asc   'The slots are kept in Launcher.Slots, a text file next to',00
+P4c         asc   'GSLauncher: one line per slot, name=path. A star at the start',00
+P4d         asc   'of a path stands for the disk you started from.',00
+P4e         asc   'You can edit the file with any text editor.',00
+P4f         asc   '(Click or press a key.)',00
 
 AboutTx     asc   '63/GSLauncher 1.0'
             db    $0D,$0D

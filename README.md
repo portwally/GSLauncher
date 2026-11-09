@@ -17,6 +17,7 @@ GSLauncher shows your favourite applications in one small window, each with its 
 - The slots are kept in a plain text file you can also edit by hand.
 - A missing application is shown dimmed with "not found" under it.
 - **Quit to Finder** in the File menu goes to the Finder.
+- A **Help menu** explains how to start apps, edit the slots, what each menu entry does, and the slots file.
 
 ## Requirements
 

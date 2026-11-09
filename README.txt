@@ -28,6 +28,8 @@ arrow keys pick the next one. Then:
 
 Choose Edit Slots again (or press Escape) to go back to starting apps.
 
+The Help menu explains all of this in the program.
+
 The slots are kept in Launcher.Slots, a text file next to GSLauncher:
 one line a slot, name=path, for example
 

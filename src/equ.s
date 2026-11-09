@@ -53,6 +53,7 @@ _WaitCursor equ   $0A12
 * Desk Manager, Event Manager
 _FixAppleMenu equ $1E05
 _GetNextEvent equ $0A06
+_FlushEvents equ  $1506
 * Window Manager
 _NewWindow  equ   $090E
 _CloseWindow equ  $0B0E
