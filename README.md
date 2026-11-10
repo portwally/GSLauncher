@@ -13,6 +13,7 @@ GSLauncher shows your favourite applications in one small window, each with its 
 - Works with **GS/OS applications (S16)** and **ProDOS 8 applications (SYS)**.
 - When an application quits, **you come back to GSLauncher**.
 - The **date of the file** is shown under each name, which is handy for seeing that a new build of something you are developing has arrived.
+- **Find Apps:** on first start GSLauncher offers to scan your disks (the boot disk or any attached disk) for S16 and ProDOS 8 applications, lists what it finds with check boxes, and adds the ones you check. You can run it again any time from the File menu.
 - **Edit the slots in the program:** add an application with the Standard File dialog, change it, rename it, move it left or right, or remove it.
 - The slots are kept in a plain text file you can also edit by hand.
 - A missing application is shown dimmed with "not found" under it.
@@ -47,7 +48,7 @@ cadius ADDFILE MyDisk.hdv /MYDISK/GSLauncher "build/GSLauncher#B3DB03"
 
 ### 2. Start it
 
-Open the **GSLauncher** folder in the Finder and double-click GSLauncher.
+Open the **GSLauncher** folder in the Finder and double-click GSLauncher. The first time, there is no slots file yet, so **Find Apps** opens and offers to look for your applications (see below).
 
 ### 3. (Optional) Start it with the computer
 
@@ -59,6 +60,7 @@ From then on GS/OS starts GSLauncher instead of the Finder. To go back to the Fi
 
 ## Using it
 
+- **Find Apps...** (Apple-F): looks for applications on your disks. In the first step you check the disks to look at (the boot disk is checked already; **All** checks every disk). Click **Scan**; Esc stops it. In the second step you check the applications you want and click **Add Selected**. **Up** and **Down** scroll the list. The System folder and ProDOS itself are left out, and an app that is already in the launcher is not added twice. It finds up to 100 apps.
 - **Add App...** (Apple-N): pick an application in the dialog (an S16 or a ProDOS 8 SYS file). It goes into the next free slot.
 - **Click a slot** to start that application.
 - **Edit Slots** (Apple-E): while it is checked, a click picks a slot (a frame goes round it) instead of starting it. The left and right arrow keys pick the neighbour. Escape ends Edit mode. With a slot picked you can use:
@@ -81,7 +83,7 @@ Terminal=*:Comms:Term.System
 - A path is an ordinary GS/OS path. A leading `*` stands for the disk you started from (`*:` is the boot volume), so the file keeps working if the disk is renamed.
 - If there is no `name=`, the file's name is used (without a trailing `.SYSTEM`).
 - Lines can end with CR or LF.
-- Without a `Launcher.Slots` file, GSLauncher starts with no slots, and you add applications from the File menu.
+- Without a `Launcher.Slots` file (the first start), GSLauncher opens Find Apps. You can also add applications from the File menu at any time.
 
 ## Icons
 
@@ -109,7 +111,7 @@ You need [Merlin 32](https://www.brutaldeluxe.fr/products/crossdevtools/merlin/)
 
 ```bash
 ./build.sh        # assembles build/GSLauncher
-./make_disk.sh    # build/GSLauncher.po: an 800K disk image with GSLauncher, its icon and an example slots file
+./make_disk.sh    # build/GSLauncher.po: an 800K disk image with GSLauncher, its read-me and its icon
 ```
 
 `build.sh` looks for Merlin 32 in `~/Downloads/Merlin32_v1.2_b2/MacOs/Merlin32`. Set `MERLIN32=/path/to/Merlin32` to use another copy. If Merlin reports "Bad Jump", run `test/fixbranches.sh`, which rewrites the branches that are too long.

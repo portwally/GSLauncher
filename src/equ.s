@@ -41,6 +41,7 @@ _SetPenSize equ   $2C04
 _SetSolidPenPat equ $3704
 _MoveTo     equ   $3A04
 _FrameRect  equ   $5304
+_PaintRect  equ   $5404
 _EraseRect  equ   $5504
 _GlobalToLocal equ $8504
 _SetForeColor equ $A004
@@ -83,6 +84,9 @@ _WriteGS    equ   $2013
 _CloseGS    equ   $2014
 _GetEOFGS   equ   $2019
 _GetDirEntryGS equ $201C
+_DInfoGS    equ   $202C
+_DStatusGS  equ   $202D
+_VolumeGS   equ   $2008
 _QuitGS     equ   $2029
 _GetBootVolGS equ $2028
 _SetPrefixGS equ  $2009
@@ -100,6 +104,8 @@ K_LEFT      equ   $08
 K_RIGHT     equ   $15
 K_RETURN    equ   $0D
 K_ESC       equ   $1B
+K_UP        equ   $0B
+K_DOWN      equ   $0A
 K_DEL       equ   $7F
 
 * file types that can be launched
@@ -141,3 +147,12 @@ T6          equ   $1C
 T7          equ   $1E
 PX          equ   $20
 PY          equ   $22
+
+* the Find Apps window (local coordinates)
+MaxFound    equ   100
+MaxVols     equ   16
+MaxDepth    equ   7
+RowsOnb     equ   8
+OListTop    equ   36
+OInfoY      equ   144
+OBtnTop     equ   150

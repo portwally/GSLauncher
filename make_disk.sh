@@ -1,6 +1,6 @@
 #!/bin/bash
 # Makes build/GSLauncher.po: an 800K ProDOS disk with GSLauncher (an S16
-# application), its read-me, its slots file and its Finder icon. Run
+# application), its read-me and its Finder icon. Run
 # ./build.sh first. Needs cadius.
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -11,7 +11,7 @@ STAGE="$B/disk"
 rm -rf "$STAGE" "$DISK"; mkdir -p "$STAGE/Icons"
 cp "$B/GSLauncher" "$STAGE/GSLauncher#B3DB03"                      # S16
 tr '\n' '\r' < "$ROOT/README.txt" > "$STAGE/ReadMe#040000"          # TXT
-tr '\n' '\r' < "$ROOT/slots.txt" > "$STAGE/Launcher.Slots#040000" # TXT
+# (no Launcher.Slots: without it the first start offers Find Apps)
 cp "$B/GSL.Icons" "$STAGE/Icons/GSL.Icons#CA0000"                   # ICN
 disk() { local out; out="$(cadius "$@" 2>&1)"; if grep -q "Error" <<< "$out"; then echo "$out" >&2; exit 1; fi; }
 disk CREATEVOLUME "$DISK" GSLauncher 800KB

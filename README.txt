@@ -12,6 +12,14 @@ Open the Control Panel (Apple menu), then Set Start. Choose "Select
 Application" and pick GSLauncher. From now on GS/OS starts GSLauncher instead
 of the Finder. "Quit to Finder" in its File menu takes you to the Finder.
 
+Finding apps
+------------
+The first time GSLauncher starts (there is no Launcher.Slots file yet) it
+opens Find Apps, and you can open it again with Find Apps... (Apple-F) in
+the File menu. Check the disks to look at (the boot disk is checked) and
+click Scan; then check the S16 and ProDOS 8 apps you want and click Add
+Selected. Esc stops a scan.
+
 Slots
 -----
 Up to 18 apps, five in a row. Add App... (Apple-N) asks for an application

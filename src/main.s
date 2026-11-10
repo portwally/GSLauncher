@@ -48,6 +48,10 @@ Start       phk
             jsr   Layout
             jsr   MakeWindow
             Tool  _InitCursor
+            lda   FirstRun
+            beq   EventLoop
+            jsr   FindApps          ; (the first start: what to add?)
+            jsr   SaveSlots         ; (the file is there from now on)
 
 *-------------------------------------------------------------
 * Main event loop
@@ -378,6 +382,8 @@ MenuTab     da    iAbout,About
             da    iHelp2,Help2
             da    iHelp3,Help3
             da    iHelp4,Help4
+            da    iHelp5,Help5
+            da    iFind,FindApps
             da    0
 
 iQuit       equ   256
@@ -393,6 +399,8 @@ iHelp1      equ   267
 iHelp2      equ   268
 iHelp3      equ   269
 iHelp4      equ   270
+iHelp5      equ   272
+iFind       equ   271
 
 Help1       ldx   #Page1
             jmp   ShowPage
@@ -401,6 +409,8 @@ Help2       ldx   #Page2
 Help3       ldx   #Page3
             jmp   ShowPage
 Help4       ldx   #Page4
+            jmp   ShowPage
+Help5       ldx   #Page5
             jmp   ShowPage
 
 * ShowPage: X = a page: a list of C string addresses, 0 at the end,
@@ -1446,7 +1456,10 @@ LoadSlots   stz   NSlots
             ldx   #SlotsFile
             lda   #1
             jsr   OpenFile
-            bcs   :x
+            bcc   :open
+            inc   FirstRun          ; (no slots file: the first start)
+            rts
+:open
             GSOS  _GetEOFGS;EOFParms
             lda   EOFParms+4
             ldx   EOFParms+6
@@ -2128,6 +2141,1032 @@ PatMatch    ldx   #0
 :fail       sec
             rts
 
+*-------------------------------------------------------------
+* Find Apps: looks on the disks for applications (S16 and SYS)
+* and lists them with check boxes; the ones checked become slots.
+* Two steps in one window: which disks, then which apps.
+*-------------------------------------------------------------
+FindApps    jsr   ListVols
+            stz   NFound
+            stz   OState
+            stz   OTop
+            jsr   OnbOpen
+:draw       jsr   OnbDraw
+:wait       pha
+            pea   $000A             ; clicks and keys
+            PushLong EvRec2
+            Tool  _GetNextEvent
+            pla
+            beq   :wait
+            lda   EvRec2
+            cmp   #evKeyDown
+            beq   :key
+            jsr   OnbClick          ; A: a button's number, $FF redraw, 0 none
+            bra   :act
+:key        jsr   OnbKey
+:act        cmp   #0
+            beq   :wait
+            cmp   #$FF
+            beq   :draw
+            cmp   #1
+            bne   :n2
+            lda   OState            ; Scan
+            bne   :wait
+            jsr   DoScan
+            bra   :draw
+:n2         cmp   #2
+            bne   :n3
+            lda   #1                ; All
+            jsr   SelAll
+            bra   :draw
+:n3         cmp   #3
+            bne   :n4
+            lda   #0                ; None
+            jsr   SelAll
+            bra   :draw
+:n4         cmp   #4
+            bne   :n5
+            jmp   OnbClose          ; Cancel
+:n5         cmp   #5
+            bne   :n6
+            lda   OState            ; Add Selected
+            beq   :wait
+            jsr   OnbClose
+            jmp   AddSelected
+:n6         jsr   OnbScroll         ; Up, Down
+            bra   :draw
+
+OnbOpen     pha
+            pha
+            PushLong OnbParms
+            Tool  _NewWindow
+            pla
+            sta   InWin
+            pla
+            sta   InWin+2
+            PushLongAt InWin
+            Tool  _SetPort
+            pea   $0000
+            Tool  _SetForeColor
+            pea   $000F
+            Tool  _SetBackColor
+            pea   1
+            pea   1
+            Tool  _SetPenSize
+            pea   0
+            Tool  _SetSolidPenPat
+            rts
+
+OnbClose    PushLongAt InWin
+            Tool  _CloseWindow
+            jmp   UsePort
+
+* OnbKey: the key in EvRec2: A = the button it stands for, or 0
+OnbKey      lda   EvRec2+2
+            and   #$7F
+            cmp   #K_ESC
+            bne   :r
+            lda   #4
+            rts
+:r          cmp   #K_RETURN
+            beq   :ret
+            cmp   #3
+            bne   :u
+:ret        lda   OState            ; Scan, or Add Selected
+            beq   :s
+            lda   #5
+            rts
+:s          lda   #1
+            rts
+:u          cmp   #K_UP
+            bne   :d
+            lda   #6
+            rts
+:d          cmp   #K_DOWN
+            bne   :n
+            lda   #7
+            rts
+:n          lda   #0
+            rts
+
+* OnbClick: the click in EvRec2: A = a button's number, $FF if a check
+* box changed, 0 if nothing
+OnbClick    lda   EvRec2+10
+            sta   ClickPt
+            lda   EvRec2+12
+            sta   ClickPt+2
+            PushLong ClickPt
+            Tool  _GlobalToLocal
+            lda   ClickPt
+            cmp   #OBtnTop
+            bcc   :rows
+            cmp   #OBtnTop+20
+            bcs   :none
+            ldx   #Btns0
+            lda   OState
+            beq   :b
+            ldx   #Btns1
+:b          lda   |0,x
+            cmp   #$FFFF
+            beq   :none
+            lda   ClickPt+2
+            cmp   |0,x
+            bcc   :nx
+            cmp   |2,x
+            bcs   :nx
+            lda   |6,x
+            rts
+:nx         txa
+            clc
+            adc   #8
+            tax
+            bra   :b
+:rows       sec
+            sbc   #OListTop
+            bcc   :none
+            ldx   #0                ; its row: / 12
+:d          cmp   #12
+            bcc   :r
+            sbc   #12
+            inx
+            bra   :d
+:r          cpx   #RowsOnb
+            bcs   :none
+            txa
+            clc
+            adc   OTop
+            sta   T0
+            jsr   GetCount
+            cmp   T0
+            beq   :none
+            bcc   :none
+            jsr   SelWord           ; the box: the other way
+            lda   |0,x
+            eor   #1
+            sta   |0,x
+            lda   #$FF
+            rts
+:none       lda   #0
+            rts
+
+* GetCount: A = how many are in the list
+GetCount    lda   OState
+            beq   :v
+            lda   NFound
+            rts
+:v          lda   NVols
+            rts
+
+* SelWord: X = the address of the check box word of item T0
+SelWord     ldx   #VolSel
+            lda   OState
+            beq   :a
+            ldx   #FoundSel
+:a          stx   T1
+            lda   T0
+            asl
+            clc
+            adc   T1
+            tax
+            rts
+
+* SelAll: A = 0 or 1 for every item
+SelAll      sta   T2
+            stz   T0
+:l          jsr   GetCount
+            cmp   T0
+            beq   :x
+            bcc   :x
+            jsr   SelWord
+            lda   T2
+            sta   |0,x
+            inc   T0
+            bra   :l
+:x          rts
+
+* OnbScroll: A = 6 (up) or 7 (down): the list a page (4) on
+OnbScroll   cmp   #6
+            bne   :dn
+            lda   OTop
+            sec
+            sbc   #4
+            bcs   :s
+            lda   #0
+:s          sta   OTop
+            rts
+:dn         lda   OTop
+            clc
+            adc   #4
+            pha
+            jsr   GetCount
+            sta   T0
+            pla
+            cmp   T0
+            bcs   :x
+            sta   OTop
+:x          rts
+
+* OnbDraw: the window: title, rows with check boxes, line, buttons
+OnbDraw     PushLong OnbRect
+            Tool  _EraseRect
+            ldx   #TitleVTx
+            ldy   #SubVTx
+            lda   OState
+            beq   :t
+            ldx   #TitleFTx
+            ldy   #SubFTx
+:t          phy
+            lda   #12
+            sta   PX
+            lda   #14
+            sta   PY
+            jsr   DrawAt
+            plx
+            lda   #28
+            sta   PY
+            jsr   DrawAt
+            stz   RowI
+:r          lda   RowI
+            cmp   #RowsOnb
+            bcs   :done
+            clc
+            adc   OTop
+            sta   RowIdx
+            sta   T0
+            jsr   GetCount
+            cmp   T0
+            beq   :done
+            bcc   :done
+            jsr   DrawRow
+            inc   RowI
+            bra   :r
+:done       jsr   DrawInfoLn
+            jmp   DrawBtns
+
+DrawRow     lda   RowI              ; its top: 36 + 12 a row
+            asl
+            asl
+            sta   T5
+            asl
+            clc
+            adc   T5
+            adc   #OListTop
+            sta   RowY
+            inc
+            sta   OnbR              ; the check box
+            lda   #12
+            sta   OnbR+2
+            lda   RowY
+            clc
+            adc   #11
+            sta   OnbR+4
+            lda   #22
+            sta   OnbR+6
+            PushLong OnbR
+            Tool  _FrameRect
+            lda   RowIdx
+            sta   T0
+            jsr   SelWord
+            lda   |0,x
+            beq   :text
+            lda   RowY              ; checked: a square in it
+            clc
+            adc   #3
+            sta   OnbR
+            lda   #14
+            sta   OnbR+2
+            lda   RowY
+            clc
+            adc   #9
+            sta   OnbR+4
+            lda   #20
+            sta   OnbR+6
+            PushLong OnbR
+            Tool  _PaintRect
+:text       jsr   RowText
+            lda   #30
+            sta   PX
+            lda   RowY
+            clc
+            adc   #10
+            sta   PY
+            ldx   #MsgBuf
+            jmp   DrawAt
+
+* RowText: MsgBuf = the text of item RowIdx
+RowText     lda   OState
+            bne   :app
+            lda   RowIdx            ; a disk: its name (after the ':')
+            jsr   VolAddr
+            sta   SP1
+            lda   (SP1)
+            inc
+            inc
+            sta   T3
+            ldx   #0
+            ldy   #3
+:vc         cpy   T3
+            bcs   :vd
+            lda   (SP1),y
+            sep   #$20
+            mx    %10
+            sta   MsgBuf,x
+            rep   #$20
+            mx    %00
+            inx
+            iny
+            bra   :vc
+:vd         lda   #0
+            sta   MsgBuf,x
+            lda   RowIdx
+            cmp   BootIdx
+            bne   :x
+            ldx   #BootTx
+            jmp   MsgCat
+:x          rts
+:app        lda   RowIdx            ; an app: the end of its path
+            jsr   FoundPtr
+            lda   [Ptr]
+            sta   T3
+            ldy   #0
+            lda   T3
+            cmp   #68
+            bcc   :ac
+            sec                     ; (too long: the last 68)
+            sbc   #68
+            tay
+:ac         ldx   #0
+:al         cpy   T3
+            bcs   :ad
+            phy
+            iny
+            iny
+            lda   [Ptr],y
+            ply
+            sep   #$20
+            mx    %10
+            sta   MsgBuf,x
+            rep   #$20
+            mx    %00
+            inx
+            iny
+            bra   :al
+:ad         lda   #0
+            sta   MsgBuf,x
+            rts
+
+* DrawInfoLn: the line under the list
+DrawInfoLn  ldx   #MsgBuf
+            lda   OState
+            bne   :f
+            ldx   #InfoVTx
+            bra   :go
+:f          lda   NFound
+            bne   :some
+            ldx   #NoneTx
+            bra   :go
+:some       ldx   #MsgBuf
+            stz   MsgBuf
+            lda   NFound
+            jsr   MsgNum
+            ldx   #FoundTx
+            jsr   MsgCat
+            lda   NFound
+            cmp   #MaxFound
+            bcc   :go2
+            ldx   #FullListTx
+            jsr   MsgCat
+:go2        ldx   #MsgBuf
+:go         stx   BtnX
+            lda   #12
+            sta   PX
+            lda   #OInfoY
+            sta   PY
+            ldx   BtnX
+            jmp   DrawAt
+
+* MsgNum: A = a number onto the end of MsgBuf
+MsgNum      stz   T6
+:d          ldx   #0
+:s          cmp   #10
+            bcc   :r
+            sbc   #10
+            inx
+            bra   :s
+:r          ora   #'0'
+            pha
+            inc   T6
+            txa
+            bne   :d
+:p          pla
+            jsr   MsgChr
+            dec   T6
+            bne   :p
+            rts
+
+* MsgChr: A = a character onto the end of MsgBuf
+MsgChr      and   #$FF
+            sta   T5
+            ldx   #0
+:e          lda   MsgBuf,x
+            and   #$FF
+            beq   :a
+            inx
+            bra   :e
+:a          lda   T5
+            sta   MsgBuf,x
+            rts
+
+DrawBtns    ldx   #Btns0
+            lda   OState
+            beq   :b
+            ldx   #Btns1
+:b          lda   |0,x
+            cmp   #$FFFF
+            beq   :x
+            stx   BtnX
+            sta   OnbR+2
+            lda   |2,x
+            sta   OnbR+6
+            lda   #OBtnTop
+            sta   OnbR
+            lda   #OBtnTop+20
+            sta   OnbR+4
+            PushLong OnbR
+            Tool  _FrameRect
+            ldx   BtnX
+            lda   |0,x
+            clc
+            adc   #8
+            sta   PX
+            lda   #OBtnTop+14
+            sta   PY
+            ldx   BtnX
+            lda   |4,x
+            tax
+            jsr   DrawAt
+            lda   BtnX
+            clc
+            adc   #8
+            tax
+            bra   :b
+:x          rts
+
+* FoundPtr: A = a found app: Ptr = its record in the 64K buffer
+FoundPtr    sta   T0
+            xba
+            and   #$FF00
+            sta   T1
+            lda   T0
+            asl
+            asl
+            clc
+            adc   T1
+            clc
+            adc   IPtr
+            sta   Ptr
+            lda   IPtr+2
+            adc   #0
+            sta   Ptr+2
+            rts
+
+* VolAddr: A = a disk: the address of its record (36 bytes)
+VolAddr     sta   T1
+            asl
+            asl
+            sta   T0
+            lda   T1
+            asl
+            asl
+            asl
+            asl
+            asl
+            clc
+            adc   T0
+            adc   #VolRec
+            rts
+
+*-------------------------------------------------------------
+* The disks
+*-------------------------------------------------------------
+ListVols    stz   NVols
+            lda   #$FFFF
+            sta   BootIdx
+            jsr   GetBoot
+            lda   #1
+            sta   DInfoNum
+:dl         GSOS  _DInfoGS;DInfoP
+            bcc   :have
+            cmp   #$11
+            beq   :x
+            bra   :next
+:have       jsr   DevOnline
+            bcc   :next
+            lda   #DevLen
+            sta   VolDev
+            lda   MyBank
+            sta   VolDev+2
+            GSOS  _VolumeGS;VolP
+            bcs   :next
+            jsr   AddVol
+:next       inc   DInfoNum
+            lda   DInfoNum
+            cmp   #64
+            bcc   :dl
+:x          rts
+
+* DevOnline: carry set if device DInfoNum is a block device with a
+* disk in it (DStatus: no waiting on empty drives)
+DevOnline   lda   DInfoChar
+            and   #$0080
+            beq   :no
+            lda   DInfoNum
+            sta   DStNum
+            GSOS  _DStatusGS;DStP
+            bcs   :no
+            lda   DStWord
+            and   #$0010
+            beq   :no
+            sec
+            rts
+:no         clc
+            rts
+
+* AddVol: the volume just read (VolNmLen) onto the list; the boot disk
+* is checked
+AddVol      lda   NVols
+            cmp   #MaxVols
+            bcs   :x
+            lda   VolNmLen
+            cmp   #33
+            bcs   :x
+            lda   NVols
+            jsr   VolAddr
+            tay
+            ldx   #VolNmLen
+            jsr   CopyGS
+            lda   NVols
+            jsr   VolAddr
+            tax
+            jsr   IsBootRec
+            php
+            lda   NVols
+            asl
+            tax
+            stz   VolSel,x
+            plp
+            bcc   :n
+            lda   NVols
+            sta   BootIdx
+            lda   #1
+            sta   VolSel,x
+:n          inc   NVols
+:x          rts
+
+* GetBoot: BootStr = the boot disk's name as ":NAME", BootLen its length
+GetBoot     stz   BootLen
+            stz   BootStr
+            GSOS  _GetBootVolGS;BootParms
+            bcs   :x
+            lda   VolBuf+2
+            sta   T3
+            ldx   #0
+            lda   VolBuf+4
+            and   #$FF
+            cmp   #':'
+            beq   :c0
+            sep   #$20
+            mx    %10
+            lda   #':'
+            sta   BootStr+2
+            rep   #$20
+            mx    %00
+            ldx   #1
+:c0         ldy   #0
+            sep   #$20
+            mx    %10
+:c          cpy   T3
+            bcs   :d
+            lda   VolBuf+4,y
+            sta   BootStr+2,x
+            inx
+            iny
+            bra   :c
+:d          rep   #$20
+            mx    %00
+            lda   BootStr+1,x       ; (the last character: no ':' at the end)
+            and   #$FF
+            jsr   IsSep
+            bne   :set
+            dex
+:set        stx   BootLen
+            stx   BootStr
+:x          rts
+
+* IsBootRec: carry set if the record at X (GS/OS string) is BootStr
+IsBootRec   stx   SP1
+            lda   (SP1)
+            cmp   BootStr
+            bne   :no
+            sta   T3
+            ldy   #0
+:c          cpy   T3
+            bcs   :yes
+            phy
+            iny
+            iny
+            lda   (SP1),y
+            ply
+            and   #$FF
+            jsr   Upper
+            sta   T4
+            lda   BootStr+2,y
+            and   #$FF
+            jsr   Upper
+            cmp   T4
+            bne   :no
+            iny
+            bra   :c
+:yes        sec
+            rts
+:no         clc
+            rts
+
+*-------------------------------------------------------------
+* The scan
+*-------------------------------------------------------------
+DoScan      PushLong OnbRect
+            Tool  _EraseRect
+            lda   #12
+            sta   PX
+            lda   #14
+            sta   PY
+            ldx   #TitleSTx
+            jsr   DrawAt
+            stz   NFound
+            stz   StopFlag
+            stz   Depth
+            stz   VolI
+:v          lda   VolI
+            cmp   NVols
+            bcs   :done
+            lda   StopFlag
+            bne   :done
+            asl
+            tax
+            lda   VolSel,x
+            beq   :nv
+            lda   VolI
+            jsr   VolAddr
+            tax
+            ldy   #ScanP
+            jsr   CopyGS
+            stz   IsBoot
+            lda   VolI
+            cmp   BootIdx
+            bne   :go
+            inc   IsBoot
+:go         jsr   ScanFolder
+:nv         inc   VolI
+            bra   :v
+:done       lda   #1
+            sta   OState
+            stz   OTop
+            rts
+
+* ScanFolder: the folder ScanP, and the ones in it
+ScanFolder  lda   Depth
+            cmp   #MaxDepth
+            bcc   :go
+            rts
+:go         ldx   #ScanP
+            lda   #1
+            jsr   OpenFile
+            bcc   :open
+            rts
+:open       lda   Depth
+            asl
+            tax
+            lda   OpenParms+2
+            sta   RefStack,x
+            jsr   ScanStatus
+:next       lda   StopFlag
+            bne   :close
+            lda   NFound
+            cmp   #MaxFound
+            bcs   :close
+            lda   Depth
+            asl
+            tax
+            lda   RefStack,x
+            sta   DirParms+2
+            lda   #1
+            sta   DirParms+6
+            sta   DirParms+8
+            GSOS  _GetDirEntryGS;DirParms
+            bcs   :close
+            lda   DirParms+16
+            cmp   #$0F
+            beq   :folder
+            cmp   #tS16
+            beq   :app
+            cmp   #tSYS
+            bne   :next
+:app        jsr   AddFound
+            bra   :next
+:folder     jsr   EnterFolder
+            bra   :next
+:close      lda   Depth
+            asl
+            tax
+            lda   RefStack,x
+            sta   CloseParms+2
+            GSOS  _CloseGS;CloseParms
+            rts
+
+* EnterFolder: the entry just read (a folder) scanned too; the System
+* folder at the top of a disk is not
+EnterFolder lda   Depth
+            bne   :ok
+            ldx   #SystemTx
+            jsr   NameIs
+            bcs   :skip
+:ok         lda   ScanP
+            pha
+            jsr   AppendName
+            bcs   :r
+            inc   Depth
+            jsr   ScanFolder
+            dec   Depth
+:r          pla
+            sta   ScanP
+:skip       rts
+
+* NameIs: carry set if the entry's name is the capitals at X (a C string)
+NameIs      stx   SP1
+            ldy   #0
+:c          lda   (SP1),y
+            and   #$FF
+            beq   :end
+            sta   T0
+            cpy   NameRes+2
+            bcs   :no
+            lda   NameRes+4,y
+            and   #$FF
+            jsr   Upper
+            cmp   T0
+            bne   :no
+            iny
+            bra   :c
+:end        cpy   NameRes+2
+            bne   :no
+            sec
+            rts
+:no         clc
+            rts
+
+* AppendName: ScanP gets ':' and the entry's name (carry set: too long)
+AppendName  lda   ScanP
+            clc
+            adc   NameRes+2
+            inc
+            cmp   #PathMax
+            bcs   :no
+            ldx   ScanP
+            sep   #$20
+            mx    %10
+            lda   #':'
+            sta   ScanP+2,x
+            inx
+            ldy   #0
+:c          cpy   NameRes+2
+            bcs   :d
+            lda   NameRes+4,y
+            sta   ScanP+2,x
+            inx
+            iny
+            bra   :c
+:d          rep   #$20
+            mx    %00
+            stx   ScanP
+            clc
+            rts
+:no         sec
+            rts
+
+* AddFound: the entry just read (an application) onto the list, but
+* not ProDOS itself
+AddFound    ldx   #ProDOSTx
+            jsr   NameIs
+            bcs   :x
+            lda   ScanP
+            pha
+            jsr   AppendName
+            bcs   :r
+            ldx   #ScanP
+            ldy   #FilePath
+            jsr   CopyGS
+            pla
+            sta   ScanP
+            jmp   StoreFound
+:r          pla
+            sta   ScanP
+:x          rts
+
+* StoreFound: FilePath onto the list ("*" for the boot disk's name)
+StoreFound  lda   IsBoot
+            beq   :copy
+            lda   BootLen
+            sta   T3
+            ldx   T3
+            ldy   #1
+            sep   #$20
+            mx    %10
+            lda   #'*'
+            sta   FilePath+2
+:s          cpx   FilePath
+            bcs   :sd
+            lda   FilePath+2,x
+            sta   FilePath+2,y
+            inx
+            iny
+            bra   :s
+:sd         rep   #$20
+            mx    %00
+            sty   FilePath
+:copy       lda   NFound
+            jsr   FoundPtr
+            lda   FilePath
+            inc
+            inc
+            sta   T3
+            ldy   #0
+            sep   #$20
+            mx    %10
+:c          cpy   T3
+            bcs   :d
+            lda   FilePath,y
+            sta   [Ptr],y
+            iny
+            bra   :c
+:d          rep   #$20
+            mx    %00
+            lda   NFound
+            asl
+            tax
+            stz   FoundSel,x
+            inc   NFound
+            rts
+
+* ScanStatus: what is being scanned, in the line under the list; Esc
+* stops
+ScanStatus  PushLong InfoRect
+            Tool  _EraseRect
+            ldx   #ScanTx
+            jsr   MsgStart
+            lda   ScanP
+            sta   T3
+            ldy   #0
+            lda   T3
+            cmp   #56
+            bcc   :s
+            sec
+            sbc   #56
+            tay
+:s          ldx   #0                ; (the end of MsgBuf)
+:e          lda   MsgBuf,x
+            and   #$FF
+            beq   :c
+            inx
+            bra   :e
+:c          cpy   T3
+            bcs   :d
+            phy
+            iny
+            iny
+            lda   ScanP,y
+            ply
+            sep   #$20
+            mx    %10
+            sta   MsgBuf,x
+            rep   #$20
+            mx    %00
+            inx
+            iny
+            bra   :c
+:d          lda   #0
+            sta   MsgBuf,x
+            lda   #12
+            sta   PX
+            lda   #OInfoY
+            sta   PY
+            ldx   #MsgBuf
+            jsr   DrawAt
+:k          pha
+            pea   $0008             ; keys
+            PushLong EvRec2
+            Tool  _GetNextEvent
+            pla
+            beq   :x
+            lda   EvRec2+2
+            and   #$7F
+            cmp   #K_ESC
+            bne   :k
+            inc   StopFlag
+            bra   :k
+:x          rts
+
+*-------------------------------------------------------------
+* The apps checked become slots
+*-------------------------------------------------------------
+AddSelected stz   AddI
+            stz   AddN
+:l          lda   AddI
+            cmp   NFound
+            bcs   :done
+            asl
+            tax
+            lda   FoundSel,x
+            beq   :next
+            lda   NSlots
+            cmp   #MaxSlots
+            bcs   :full
+            lda   AddI
+            jsr   FoundPtr
+            jsr   IsDup
+            bcs   :next
+            lda   NSlots
+            sta   CurI
+            jsr   PathOf
+            sta   SP2
+            lda   [Ptr]
+            inc
+            inc
+            sta   T3
+            ldy   #0
+            sep   #$20
+            mx    %10
+:c          cpy   T3
+            bcs   :cd
+            lda   [Ptr],y
+            sta   (SP2),y
+            iny
+            bra   :c
+:cd         rep   #$20
+            mx    %00
+            lda   CurI
+            jsr   DefaultName
+            inc   NSlots
+            inc   AddN
+:next       inc   AddI
+            bra   :l
+:full       ldx   #FullTx
+            jsr   Alert
+:done       lda   AddN
+            beq   :x
+            Tool  _WaitCursor
+            jsr   ScanAll           ; (their icons and dates)
+            Tool  _InitCursor
+            jsr   SaveSlots
+            jmp   Relayout
+:x          rts
+
+* IsDup: carry set if the app at Ptr is a slot already
+IsDup       stz   DupI
+:s          lda   DupI
+            cmp   NSlots
+            bcs   :no
+            jsr   PathOf
+            sta   SP1
+            lda   (SP1)
+            cmp   [Ptr]
+            bne   :nx
+            sta   T3
+            ldy   #0
+:c          cpy   T3
+            bcs   :yes
+            phy
+            iny
+            iny
+            lda   (SP1),y
+            and   #$FF
+            jsr   Upper
+            sta   T4
+            lda   [Ptr],y
+            and   #$FF
+            jsr   Upper
+            ply
+            cmp   T4
+            bne   :nx
+            iny
+            bra   :c
+:nx         inc   DupI
+            bra   :s
+:yes        sec
+            rts
+:no         clc
+            rts
+
             put   genicon.s
 
 *-------------------------------------------------------------
@@ -2175,6 +3214,32 @@ BootParms   dw    1
             adrl  VolBuf
 VolBuf      dw    68                ; buffer size, then a GS/OS string
             ds    66
+DInfoP      dw    3
+DInfoNum    dw    1
+            adrl  DevRB
+DInfoChar   dw    0
+DStP        dw    5
+DStNum      dw    0
+            dw    0                 ; status code 0: the device's status
+            adrl  DStList
+            adrl  6
+            adrl  0
+DStList
+DStWord     dw    0
+            adrl  0
+DevRB       dw    36
+DevLen      dw    0
+            ds    34
+VolP        dw    6
+VolDev      adrl  0
+            adrl  VolRB
+VolTotal    adrl  0
+VolFreeB    adrl  0
+VolFSID     dw    0
+VolBlkSz    dw    0
+VolRB       dw    68
+VolNmLen    dw    0
+VolNmStr    ds    66
 QuitParms   dw    2
             adrl  0                 ; path
             dw    0                 ; flags ($8000: back here)
@@ -2335,6 +3400,26 @@ HelpParms     dw    78
             adrl  $FFFFFFFF
             adrl  0
 
+OnbParms     dw    78
+            dw    $2020             ; an alert frame, visible
+            adrl  0
+            adrl  0
+            dw    0,0,0,0
+            adrl  0
+            dw    0,0
+            dw    0,0
+            dw    0,0
+            dw    0,0
+            dw    0,0
+            adrl  0
+            dw    0
+            adrl  0
+            adrl  0
+            adrl  0
+            dw    16,40,192,600
+            adrl  $FFFFFFFF
+            adrl  0
+
 TitleTx     db    12
             asc   ' GSLauncher '
 EditTitleTx db    26
@@ -2348,6 +3433,7 @@ AppleMenu   asc   '>>@\XN1',00
             asc   '.',00
 FileMenu    asc   '>>  File  \N2',00
             asc   '--Add App...\N260*Nn',00
+            asc   '--Find Apps...\N271*Ff',00
             asc   '--Edit Slots\N261*Ee',00
             asc   '--Change Slot...\N262',00
             asc   '--Rename Slot...\N263*Rr',00
@@ -2361,6 +3447,7 @@ HelpMenu    asc   '>>  Help  \N4',00
             asc   '--Editing the Slots\N268',00
             asc   '--The Menu Entries\N269',00
             asc   '--The Slots File\N270',00
+            asc   '--Finding Apps\N272',00
             asc   '.',00
 EditMenu    asc   '>>  Edit  \N3',00
             asc   '--Undo\N250*Zz',00
@@ -2386,9 +3473,10 @@ P2d         asc   'a slot (a frame appears) instead of starting it. The arrow ke
 P2e         asc   'pick the next one. Then use Change, Rename, Remove or Move.',00
 P2f         asc   'Choose Edit Slots again, or press Esc, to start apps again.',00
 P2g         asc   '(Click or press a key.)',00
-Page3       da    P3a,P3b,P3c,P3d,P3e,P3f,P3g,P3h,P3i,P3j,0
+Page3       da    P3a,P3b,P3k,P3c,P3d,P3e,P3f,P3g,P3h,P3i,P3j,0
 P3a         asc   'The Menu Entries',00
 P3b         asc   'Add App:  an app into a new slot.',00
+P3k         asc   'Find Apps:  looks on your disks for apps and lists them to add.',00
 P3c         asc   'Edit Slots:  a click picks a slot instead of starting it.',00
 P3d         asc   'Change Slot:  another app for the picked slot.',00
 P3e         asc   'Rename Slot:  the name under the icon (empty: the file name).',00
@@ -2397,6 +3485,14 @@ P3g         asc   'Move Left, Move Right:  change the order of the slots.',00
 P3h         asc   'Quit to Finder:  starts the Finder.',00
 P3i         asc   'Change, Rename, Remove and Move need Edit Slots and a picked slot.',00
 P3j         asc   '(Click or press a key.)',00
+Page5       da    P5a,P5b,P5c,P5d,P5e,P5f,P5g,0
+P5a         asc   'Finding Apps',00
+P5b         asc   'Find Apps (Apple-F) looks on your disks for S16 and ProDOS 8 apps.',00
+P5c         asc   'It opens by itself the first time GSLauncher starts (no slots file).',00
+P5d         asc   'First check the disks to look at (the boot disk is checked), then Scan.',00
+P5e         asc   'Then check the apps to add and click Add Selected. Esc stops a scan.',00
+P5f         asc   'The System folder and ProDOS itself are left out. Apps already in',00
+P5g         asc   'the launcher are not added twice.   (Click or press a key.)',00
 Page4       da    P4a,P4b,P4c,P4d,P4e,P4f,0
 P4a         asc   'The Slots File',00
 P4b         asc   'The slots are kept in Launcher.Slots, a text file next to',00
@@ -2441,6 +3537,65 @@ InQTx       asc   'Name for this slot:',00
 InHintTx    asc   'Return: OK     Esc: Cancel',00
 CaretTx     asc   '_',00
 
+OState      dw    0                 ; 0 which disks, 1 which apps
+OTop        dw    0
+NFound      dw    0
+NVols       dw    0
+BootIdx     dw    $FFFF
+BootLen     dw    0
+IsBoot      dw    0
+StopFlag    dw    0
+Depth       dw    0
+VolI        dw    0
+RowI        dw    0
+RowIdx      dw    0
+RowY        dw    0
+BtnX        dw    0
+AddI        dw    0
+AddN        dw    0
+DupI        dw    0
+FirstRun    dw    0
+OnbRect     dw    0,0,176,560
+InfoRect    dw    134,0,150,560
+OnbR        dw    0,0,0,0
+Btns0       da    12,70,ScanBt,1
+            da    82,128,AllBt,2
+            da    140,198,NoneBt,3
+            da    480,548,CancelBt,4
+            dw    $FFFF
+Btns1       da    12,130,AddBt,5
+            da    142,188,AllBt,2
+            da    200,258,NoneBt,3
+            da    290,326,UpBt,6
+            da    338,390,DownBt,7
+            da    480,548,CancelBt,4
+            dw    $FFFF
+ScanBt      asc   'Scan',00
+AllBt       asc   'All',00
+NoneBt      asc   'None',00
+CancelBt    asc   'Cancel',00
+AddBt       asc   'Add Selected',00
+UpBt        asc   'Up',00
+DownBt      asc   'Down',00
+TitleVTx    asc   'Find Apps: which disks?',00
+SubVTx      asc   'Check the disks to look at. GSLauncher finds S16 and ProDOS 8 applications.',00
+TitleFTx    asc   'Find Apps: the applications found',00
+SubFTx      asc   'Check the ones to add to the launcher.',00
+TitleSTx    asc   'Find Apps: looking ...',00
+InfoVTx     asc   'Click a disk to check or uncheck it. Scan can take a while.',00
+NoneTx      asc   'No applications found.',00
+FoundTx     asc   ' found. Check the ones to add.',00
+FullListTx  asc   ' (the list is full)',00
+BootTx      asc   '   (boot disk)',00
+ScanTx      asc   'Looking in ',00
+SystemTx    asc   'SYSTEM',00
+ProDOSTx    asc   'PRODOS',00
+ScanP       ds    PathSz
+RefStack    ds    MaxDepth*2+2
+VolRec      ds    MaxVols*36
+VolSel      ds    MaxVols*2
+FoundSel    ds    MaxFound*2
+BootStr     ds    40
 AppName     ds    66
 PatBuf      ds    18
 DateTmp     ds    20
