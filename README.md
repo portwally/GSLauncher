@@ -8,7 +8,7 @@ GSLauncher shows your favourite applications in one small window, each with its 
 
 ## Features
 
-- A window of up to 18 slots, five to a row. The window grows and shrinks to fit.
+- A window of slots, five to a row, that grows and shrinks to fit. Up to **4 pages** (tabs) of up to 18 slots each.
 - Each slot shows the application's **Finder icon**, taken from the Finder's icon files (type $CA). Applications without an icon get a plain one.
 - Works with **GS/OS applications (S16)** and **ProDOS 8 applications (SYS)**.
 - When an application quits, **you come back to GSLauncher**.
@@ -18,6 +18,10 @@ GSLauncher shows your favourite applications in one small window, each with its 
 - The slots are kept in a plain text file you can also edit by hand.
 - A missing application is shown dimmed with "not found" under it.
 - **Quit to Finder** in the File menu goes to the Finder.
+- **Keys 1-9** start the first nine slots of the page.
+- **Launch count and last used:** GSLauncher counts how often you start each app and when. The **View** menu chooses what the line under each name shows: the file date, when it was last started, or how many times.
+- **Restart** and **Shut Down** in the File menu (they use the GS/OS shutdown call, so disks are closed properly).
+- **Remove Missing Slots** cleans up slots whose app is gone.
 - A **Help menu** explains how to start apps, edit the slots, what each menu entry does, and the slots file.
 
 ## Requirements
@@ -61,6 +65,7 @@ From then on GS/OS starts GSLauncher instead of the Finder. To go back to the Fi
 ## Using it
 
 - **Find Apps...** (Apple-F): looks for applications on your disks. In the first step you check the disks to look at (the boot disk is checked already; **All** checks every disk). Click **Scan**; Esc stops it. In the second step you check the applications you want and click **Add Selected**. **Up** and **Down** scroll the list. The System folder and ProDOS itself are left out, and an app that is already in the launcher is not added twice. It finds up to 100 apps.
+- **Click a slot** or press its number key (**1-9**) to start the app.
 - **Add App...** (Apple-N): pick an application in the dialog (an S16 or a ProDOS 8 SYS file). It goes into the next free slot.
 - **Click a slot** to start that application.
 - **Edit Slots** (Apple-E): while it is checked, a click picks a slot (a frame goes round it) instead of starting it. The left and right arrow keys pick the neighbour. Escape ends Edit mode. With a slot picked you can use:
@@ -69,16 +74,40 @@ From then on GS/OS starts GSLauncher instead of the Finder. To go back to the Fi
   - **Remove Slot**
   - **Move Left / Move Right**
 
+## Pages
+
+With more than one page, tabs show across the top of the window. Click a tab or press **Tab** to change page. The **Page** menu has:
+
+- **New Page...:** a page with a name of your choice (up to 4 pages).
+- **Rename Page...**
+- **Remove Page:** removes the page and its slots (the apps themselves are not touched).
+- **Move Slot to Next Page:** with Edit Slots on and a slot picked, moves it to the end of the next page.
+
+## View
+
+The **View** menu chooses the line under each app's name: **Show File Date**, **Show Last Used** (when you last started it from GSLauncher) or **Show Launch Count**. The choice is kept.
+
+## Restart and Shut Down
+
+**File > Restart...** and **File > Shut Down...** ask first and then use the GS/OS shutdown call, so everything is closed properly. Shut Down shows the "you may now switch off your computer" message, with a Restart button.
+
 ## The slots file
 
-The slots are kept in `Launcher.Slots`, a text file in the same folder as GSLauncher. GSLauncher writes it whenever you change the slots. It has one line per slot, in the form `name=path`:
+The slots are kept in `Launcher.Slots`, a text file in the same folder as GSLauncher. GSLauncher writes it whenever you change the slots or start an app. It has one line per slot, in the form `name=path`:
 
 ```
 # comments start with # or ;
+@view=0
+[Work]
 Word Processor=*:Apps:Writer:Writer
 Paint=*:Apps:Paint:Paint
-Terminal=*:Comms:Term.System
+[Comms]
+Terminal=*:Comms:Term.System|12|04 Nov 09:20
 ```
+
+- `[Name]` starts a page; slots before the first one are on a page called Apps.
+- `@view=N` is the View menu's choice (0 file date, 1 last used, 2 launch count).
+- `|12|04 Nov 09:20` after a path is the launch count and the time of the last launch. GSLauncher writes it, and you can leave it out.
 
 - A path is an ordinary GS/OS path. A leading `*` stands for the disk you started from (`*:` is the boot volume), so the file keeps working if the disk is renamed.
 - If there is no `name=`, the file's name is used (without a trailing `.SYSTEM`).
@@ -142,7 +171,7 @@ The screenshots end up in `build/test/screens/`. The script works on a copy of t
 
 ## Limits
 
-- 18 slots, with names of up to 31 characters and paths of up to 254 characters.
+- 4 pages of 18 slots, with names of up to 31 characters and paths of up to 254 characters.
 - Applications of type S16 and SYS only.
 - The window is for the 640-pixel Super Hi-Res desktop (the usual GS/OS desktop).
 

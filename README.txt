@@ -1,4 +1,4 @@
-GSLauncher 1.0
+GSLauncher 1.1
 ==============
 
 A program launcher for the Apple IIgs (GS/OS, System 6). One window shows
@@ -22,7 +22,11 @@ Selected. Esc stops a scan.
 
 Slots
 -----
-Up to 18 apps, five in a row. Add App... (Apple-N) asks for an application
+Up to 18 apps a page, five in a row, and up to 4 pages (tabs; Page menu).
+Keys 1 to 9 start the first nine slots of a page. The View menu chooses
+what shows under each name: the file date, when it was last started, or how
+often. Restart and Shut Down are in the File menu.
+ Add App... (Apple-N) asks for an application
 (an S16 or a ProDOS 8 SYS file) and puts it in a new slot.
 
 To change slots, choose Edit Slots (Apple-E): the title says Edit Slots,

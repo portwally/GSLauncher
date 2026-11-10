@@ -8,6 +8,8 @@ mkdir -p "$ROOT/build"
 python3 -I "$ROOT/test/labels.py" "$ROOT/src" || exit 1   # (Merlin silently takes the first of two)
 # the generic icon (src/genicon.s) and the Finder icon, from art/make_icon.py
 python3 -I "$ROOT/art/make_icon.py" "$ROOT/build/GSL.Icons" "$ROOT/build/icon-preview.png" "$ROOT/src/genicon.s"
+# the build date for the About box
+printf "            asc   'Built %s'\n" "$(date '+%d %b %Y %H:%M' | sed 's/^0//')" > "$ROOT/src/builddate.s"
 A="$ROOT/build/asm"
 rm -rf "$A"; mkdir -p "$A"
 cp "$ROOT"/src/*.s "$A/"

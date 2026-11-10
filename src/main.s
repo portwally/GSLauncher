@@ -81,10 +81,26 @@ EventLoop   pha
             bra   EventLoop
 
 * Keys: in Edit mode the arrows choose a slot, Escape ends Edit mode
-DoKey       lda   EditMode
-            beq   :x
-            lda   EventRec+2
+DoKey       lda   EventRec+2
             and   #$7F
+            cmp   #K_TAB
+            bne   :nt
+            jmp   NextPage
+:nt         cmp   #'1'
+            bcc   :ed
+            cmp   #'9'+1
+            bcs   :ed
+            sec                     ; a number: that slot
+            sbc   #'1'
+            cmp   NSlots
+            bcs   :x
+            ldx   EditMode
+            bne   :pick
+            jmp   Launch
+:pick       sta   Sel
+            jmp   Redraw
+:ed         ldx   EditMode
+            beq   :x
             cmp   #K_ESC
             bne   :l
             jmp   EditToggle
@@ -114,7 +130,13 @@ DoClick     jsr   UsePort
             sta   ClickPt+2
             PushLong ClickPt
             Tool  _GlobalToLocal
-            jsr   HitSlot
+            lda   ClickPt           ; the tabs above the slots
+            cmp   TopOff
+            bcs   :slots
+            lda   TopOff
+            beq   :x
+            jmp   TabClick
+:slots      jsr   HitSlot
             bcs   :x
             ldx   EditMode
             bne   :sel
@@ -139,6 +161,7 @@ HitSlot     lda   ClickPt+2         ; the column
             stx   T0
             lda   ClickPt           ; the row
             sec
+            sbc   TopOff
             sbc   #Margin
             bcc   :no
             ldx   #0
@@ -188,7 +211,8 @@ Launch      sta   CurI
             beq   :app
             ldx   #NotAppTx
             jmp   Alert
-:app         lda   CurI
+:app         jsr   CountLaunch
+            lda   CurI
             jsr   FullPath          ; ("*" as the boot disk's name: a
             jsr   SetPrefix0        ; (its folder: a ProDOS 8 app's prefix)
             lda   #PathBuf          ; ProDOS 8 app needs a real prefix)
@@ -317,12 +341,17 @@ MakeMenus   PushLong HelpMenu
             jsr   AddMenu
             PushLong EditMenu
             jsr   AddMenu
+            PushLong ViewMenu
+            jsr   AddMenu
+            PushLong PageMenu
+            jsr   AddMenu
             PushLong FileMenu
             jsr   AddMenu
             PushLong AppleMenu
             jsr   AddMenu
             pea   1                 ; the Apple menu: desk accessories
             Tool  _FixAppleMenu
+            jsr   ViewChecks
             pha
             Tool  _FixMenuBar
             pla
@@ -383,7 +412,19 @@ MenuTab     da    iAbout,About
             da    iHelp3,Help3
             da    iHelp4,Help4
             da    iHelp5,Help5
+            da    iHelp6,Help6
             da    iFind,FindApps
+            da    iNextPg,NextPage
+            da    iNewPg,NewPage
+            da    iRenPg,RenamePage
+            da    iDelPg,RemovePage
+            da    iMovPg,MovePage
+            da    iViewD,ViewDate
+            da    iViewU,ViewUsed
+            da    iViewC,ViewCount
+            da    iClean,CleanSlots
+            da    iRestart,Restart
+            da    iShut,ShutDown
             da    0
 
 iQuit       equ   256
@@ -400,7 +441,19 @@ iHelp2      equ   268
 iHelp3      equ   269
 iHelp4      equ   270
 iHelp5      equ   272
+iHelp6      equ   273
 iFind       equ   271
+iNextPg     equ   280
+iNewPg      equ   281
+iRenPg      equ   282
+iDelPg      equ   283
+iMovPg      equ   284
+iViewD      equ   285
+iViewU      equ   286
+iViewC      equ   287
+iClean      equ   288
+iRestart    equ   289
+iShut       equ   290
 
 Help1       ldx   #Page1
             jmp   ShowPage
@@ -411,6 +464,8 @@ Help3       ldx   #Page3
 Help4       ldx   #Page4
             jmp   ShowPage
 Help5       ldx   #Page5
+            jmp   ShowPage
+Help6       ldx   #Page6
             jmp   ShowPage
 
 * ShowPage: X = a page: a list of C string addresses, 0 at the end,
@@ -432,7 +487,7 @@ ShowPage    stx   SP1
             asl
             adc   #20
             sta   T0                ; (a title line, and 2 extra)
-            lda   #30
+            lda   #16
             sta   HelpParms+62
             clc
             adc   T0
@@ -601,6 +656,8 @@ ChangeApp   jsr   NeedSel
 
 * SetSlotPath: PathBuf as slot CurI's app (its name from it)
 SetSlotPath lda   CurI
+            jsr   ClearUse
+            lda   CurI
             jsr   PathOf
             tay
             ldx   #PathBuf
@@ -638,7 +695,13 @@ RenameSlot  jsr   NeedSel
 
 RemoveSlot  jsr   NeedSel
             bcs   :x
-            lda   Sel               ; (moved to the end, then dropped)
+            jsr   RemoveCore
+            jsr   SaveSlots
+            jmp   Relayout
+:x          rts
+
+* RemoveCore: slot Sel moved to the end, then dropped
+RemoveCore  lda   Sel
             sta   T6
 :l          lda   T6
             inc
@@ -655,9 +718,7 @@ RemoveSlot  jsr   NeedSel
             lda   NSlots
             dec
             sta   Sel               ; (none left: $FFFF, no slot)
-:s          jsr   SaveSlots
-            jmp   Relayout
-:x          rts
+:s          rts
 
 MoveLeft    jsr   NeedSel
             bcs   :x
@@ -715,6 +776,15 @@ SwapSlots   lda   T6
             lda   #DateSz
             jsr   SwapMem
             lda   T6
+            jsr   UsedOf
+            pha
+            lda   T7
+            jsr   UsedOf
+            tay
+            plx
+            lda   #DateSz
+            jsr   SwapMem
+            lda   T6
             jsr   IconOf
             pha
             lda   T7
@@ -740,10 +810,10 @@ SwapSlots   lda   T6
             ply
             iny
             iny
-            cpy   #6
+            cpy   #8
             bcc   :w
             rts
-WordArrs    da    SlotType,SlotHas,SlotOK
+WordArrs    da    SlotType,SlotHas,SlotOK,SlotCount
 
 * SwapMem: A bytes (even) at X and at Y change places
 SwapMem     sta   T5
@@ -854,7 +924,7 @@ InputBox    pha
             sta   PX
             lda   #13
             sta   PY
-            ldx   #InQTx
+            ldx   InQP
             jsr   DrawAt
             pea   1
             pea   1
@@ -919,7 +989,9 @@ InputBox    pha
 :cancel     jsr   :close
             sec
             rts
-:close      PushLongAt InWin
+:close      lda   #InQTx
+            sta   InQP
+            PushLongAt InWin
             Tool  _CloseWindow
             jmp   UsePort
 
@@ -927,7 +999,13 @@ InputBox    pha
 * The window
 *-------------------------------------------------------------
 * Layout: columns, rows and the window's size and place for NSlots
-Layout      lda   NSlots
+Layout      stz   TopOff            ; (tabs above the slots: 2 pages or more)
+            lda   NGroups
+            cmp   #2
+            bcc   :nt
+            lda   #TabH
+            sta   TopOff
+:nt         lda   NSlots
             cmp   #MaxCols+1
             bcc   :a
             lda   #MaxCols
@@ -959,6 +1037,8 @@ Layout      lda   NSlots
             adc   #CellH
             dex
             bne   :h
+            clc
+            adc   TopOff
             sta   WinH
             lda   #640              ; centred
             sec
@@ -1033,17 +1113,22 @@ DrawAll     pea   $0000             ; black on white
             Tool  _SetBackColor
             PushLong ContRect
             Tool  _EraseRect
+            jsr   DrawTabs
             lda   NSlots
             bne   :slots
             lda   #Margin+10        ; none yet: what to do
             sta   PX
-            lda   #Margin+20
+            lda   TopOff
+            clc
+            adc   #Margin+20
             sta   PY
             ldx   #EmptyTx
             jsr   DrawAt
             lda   #Margin+10
             sta   PX
-            lda   #Margin+32
+            lda   TopOff
+            clc
+            adc   #Margin+32
             sta   PY
             ldx   #Empty2Tx
             jmp   DrawAt
@@ -1117,11 +1202,26 @@ DrawSlot    sta   CurI
             tax
             ldy   #38
             jsr   CellText
-            lda   CurI              ; the file's date
-            jsr   DateOf
-            tax
+            jsr   ThirdLine         ; (file date, last used or launches)
             ldy   #48
             jsr   CellText
+            lda   CurI              ; 1-9: the key that starts it
+            cmp   #9
+            bcs   :nonum
+            clc
+            adc   #'1'
+            sta   DigTx
+            lda   CellX
+            clc
+            adc   #5
+            sta   PX
+            lda   CellY
+            clc
+            adc   #11
+            sta   PY
+            ldx   #DigTx
+            jsr   DrawAt
+:nonum
             lda   EditMode          ; chosen (Edit mode): a frame round it
             beq   :x
             lda   CurI
@@ -1209,7 +1309,9 @@ CellXY      ldx   #0                ; column, row
             clc
             adc   #CellH
             bra   :cy
-:cyd        sta   CellY
+:cyd        clc
+            adc   TopOff
+            sta   CellY
             rts
 
 * DrawAt: X = a C string (this bank) at PX, PY (the baseline)
@@ -1286,6 +1388,13 @@ NameOf      asl
             clc
             adc   #SlotName
             rts
+UsedOf      asl
+            asl
+            asl
+            asl
+            clc
+            adc   #SlotUsed
+            rts
 DateOf      asl
             asl
             asl
@@ -1293,10 +1402,12 @@ DateOf      asl
             clc
             adc   #SlotDate
             rts
-IconOf      xba                     ; * 1024
+IconOf      xba                     ; * 768
             and   #$FF00
+            sta   PO2
             asl
-            asl
+            clc
+            adc   PO2
             clc
             adc   #SlotIcon
             rts
@@ -1452,25 +1563,70 @@ SysTx       asc   '.SYSTEM'
 *-------------------------------------------------------------
 * The slots file: name=path lines (CR or LF); # or ; starts a note
 *-------------------------------------------------------------
+*-------------------------------------------------------------
+* Pages: the slots are kept in pages (tabs). Master holds the slot
+* lines of every page, one after the other; the page on show is in
+* the slot arrays, and written back to Master (SerializePage) when
+* it is left or saved.
+*-------------------------------------------------------------
+* NextLine: the next line of the text at SP1 (FPos to FEnd) into
+* LineBuf; carry set at the end
+NextLine    lda   FPos
+            cmp   FEnd
+            bcs   :end
+            ldy   FPos
+            ldx   #0
+:c          cpy   FEnd
+            bcs   :eol
+            lda   (SP1),y
+            and   #$FF
+            iny
+            cmp   #$0D
+            beq   :eol
+            cmp   #$0A
+            beq   :eol
+            cpx   #LineMax
+            bcs   :c                ; (too long: the rest dropped)
+            sta   LineBuf,x         ; (and a zero after it)
+            inx
+            bra   :c
+:eol        sty   FPos
+            lda   #0
+            sta   LineBuf,x
+            clc
+            rts
+:end        sec
+            rts
+
+* LoadSlots: the file into pages (carry: none yet, the first start)
 LoadSlots   stz   NSlots
+            lda   #1
+            sta   NGroups
+            stz   CurG
+            stz   MLen
+            stz   ViewMode
+            stz   PageOff
+            stz   PageLen
+            ldx   #DefPageTx
+            ldy   #PageName
+            jsr   CopyC
             ldx   #SlotsFile
             lda   #1
             jsr   OpenFile
             bcc   :open
             inc   FirstRun          ; (no slots file: the first start)
             rts
-:open
-            GSOS  _GetEOFGS;EOFParms
+:open       GSOS  _GetEOFGS;EOFParms
             lda   EOFParms+4
             ldx   EOFParms+6
             bne   :max
-            cmp   #FileMax
+            cmp   #MasterMax
             bcc   :n
-:max        lda   #FileMax
+:max        lda   #MasterMax
 :n          sta   RWParms+8
             stz   RWParms+10
             stz   RWParms+12
-            lda   #FileBuf
+            lda   #LoadBuf
             sta   RWParms+4
             lda   MyBank
             sta   RWParms+6
@@ -1478,46 +1634,981 @@ LoadSlots   stz   NSlots
             lda   RWParms+12
             sta   FileLen
             GSOS  _CloseGS;CloseParms
-            jsr   ParseSlots
-:x          rts
-
-ParseSlots  stz   FPos
-:line       lda   NSlots
-            cmp   #MaxSlots
-            bcs   :done
-            lda   FPos
-            cmp   FileLen
-            bcs   :done
-            ldx   FPos              ; a line into LineBuf
-            ldy   #0
-:c          cpx   FileLen
-            bcs   :eol
-            lda   FileBuf,x
-            and   #$FF
-            inx
-            cmp   #$0D
-            beq   :eol
-            cmp   #$0A
-            beq   :eol
-            cpy   #LineMax
-            bcs   :c                ; (too long: the rest dropped)
-            sta   LineBuf,y         ; (and a zero after it)
-            iny
-            bra   :c
-:eol        stx   FPos
+            jsr   SplitFile
             lda   #0
-            sta   LineBuf,y
-            cpy   #0
-            beq   :line
+            jmp   ParsePage
+
+* SplitFile: LoadBuf (FileLen bytes) into Master, page by page
+SplitFile   stz   FPos
+            lda   FileLen
+            sta   FEnd
+            stz   WPage
+            stz   HdrSeen
+            stz   PageLines
+:line       lda   #LoadBuf
+            sta   SP1
+            jsr   NextLine
+            bcs   :done
             lda   LineBuf
             and   #$FF
+            beq   :line
             cmp   #'#'
             beq   :line
             cmp   #';'
             beq   :line
+            cmp   #'@'
+            beq   :set
+            cmp   #'['
+            beq   :hdr
+            jsr   AppendLine
+            bra   :line
+:set        lda   LineBuf+1         ; @view=N
+            and   #$FF
+            cmp   #'v'
+            bne   :line
+            lda   LineBuf+6
+            and   #$FF
+            sec
+            sbc   #'0'
+            cmp   #3
+            bcs   :line
+            sta   ViewMode
+            bra   :line
+:hdr        jsr   NewHeader
+            bra   :line
+:done       rts
+
+* NewHeader: LineBuf = "[name]": the first names page 0, the others
+* start a page (more than MaxGroups: they go on the last)
+NewHeader   lda   HdrSeen
+            bne   :new
+            inc   HdrSeen
+            lda   PageLen           ; (page 0 has nothing yet: it is this one)
+            bne   :new
+            lda   #0
+            bra   :name
+:new        lda   NGroups
+            cmp   #MaxGroups
+            bcc   :add
+            rts
+:add        sta   WPage
+            asl
+            tax
+            lda   MLen
+            sta   PageOff,x
+            stz   PageLen,x
+            lda   NGroups
+            inc   NGroups
+            stz   PageLines
+:name       sta   WPage
+            jsr   PageNameAddr
+            sta   SP2
+            ldx   #1
+            ldy   #0
+:c          lda   LineBuf,x
+            and   #$FF
+            beq   :d
+            cmp   #']'
+            beq   :d
+            cpy   #NameMax
+            bcs   :d
+            sep   #$20
+            mx    %10
+            sta   (SP2),y
+            rep   #$20
+            mx    %00
+            inx
+            iny
+            bra   :c
+:d          sep   #$20
+            mx    %10
+            lda   #0
+            sta   (SP2),y
+            rep   #$20
+            mx    %00
+            cpy   #0
+            bne   :x
+            ldx   #DefPageTx        ; (no name: Apps)
+            lda   WPage
+            jsr   PageNameAddr
+            tay
+            jsr   CopyC
+:x          rts
+
+* PageNameAddr: A = a page: A = the address of its name
+PageNameAddr asl
+            asl
+            asl
+            asl
+            asl
+            clc
+            adc   #PageName
+            rts
+
+* AppendLine: LineBuf as a line of page WPage (the last one in Master)
+AppendLine  lda   PageLines
+            cmp   #MaxSlots
+            bcs   :x
+            ldx   #0
+:l          lda   LineBuf,x
+            and   #$FF
+            beq   :e
+            inx
+            bra   :l
+:e          txa
+            clc
+            adc   MLen
+            inc
+            cmp   #MasterMax
+            bcs   :x
+            ldy   MLen
+            sty   T3
+            ldx   #0
+            sep   #$20
+            mx    %10
+:c          lda   LineBuf,x
+            beq   :d
+            sta   Master,y
+            inx
+            iny
+            bra   :c
+:d          lda   #$0D
+            sta   Master,y
+            iny
+            rep   #$20
+            mx    %00
+            sty   MLen
+            tya
+            sec
+            sbc   T3
+            sta   T3
+            lda   WPage
+            asl
+            tax
+            lda   PageLen,x
+            clc
+            adc   T3
+            sta   PageLen,x
+            inc   PageLines
+:x          rts
+
+* ParsePage: A = a page: its lines into the slot arrays (NSlots from 0)
+ParsePage   asl
+            tax
+            lda   PageOff,x
+            sta   FPos
+            clc
+            adc   PageLen,x
+            sta   FEnd
+            stz   NSlots
+:line       lda   NSlots
+            cmp   #MaxSlots
+            bcs   :done
+            lda   #Master
+            sta   SP1
+            jsr   NextLine
+            bcs   :done
+            lda   LineBuf
+            and   #$FF
+            beq   :line
             jsr   AddLine
             bra   :line
 :done       rts
+
+* SerializePage: the slot arrays as the text of page CurG in Master
+SerializePage lda  #LoadBuf
+            sta   OPtr
+            ldy   #0
+            stz   SerI
+:s          lda   SerI
+            cmp   NSlots
+            bcs   :built
+            sta   T6
+            jsr   BuildLine
+            inc   SerI
+            bra   :s
+:built      lda   CurG
+            jmp   ReplacePage       ; (Y: the length)
+
+* BuildLine: slot T6 as a line at (OPtr),Y: name=path|count|last used
+BuildLine   lda   T6
+            jsr   NameOf
+            tax
+:n          lda   |0,x
+            and   #$FF
+            beq   :nd
+            sta   (OPtr),y
+            inx
+            iny
+            bra   :n
+:nd         lda   #'='
+            sta   (OPtr),y
+            iny
+            sty   T5
+            lda   T6
+            jsr   PathOf
+            tax
+            lda   |0,x
+            sta   T4
+            ldy   T5
+:pc         lda   T4
+            beq   :pd
+            lda   |2,x
+            and   #$FF
+            sta   (OPtr),y
+            inx
+            iny
+            dec   T4
+            bra   :pc
+:pd         lda   T6
+            asl
+            tax
+            lda   SlotCount,x
+            beq   :eol
+            pha
+            lda   #'|'
+            sta   (OPtr),y
+            iny
+            pla
+            jsr   PutNum
+            lda   #'|'
+            sta   (OPtr),y
+            iny
+            lda   T6
+            jsr   UsedOf
+            tax
+:uc         lda   |0,x
+            and   #$FF
+            beq   :eol
+            sta   (OPtr),y
+            inx
+            iny
+            bra   :uc
+:eol        lda   #$0D
+            sta   (OPtr),y
+            iny
+            rts
+
+* PutNum: A = a number as digits at (OPtr),Y
+PutNum      stz   T2
+:d          ldx   #0
+:s          cmp   #10
+            bcc   :r
+            sbc   #10
+            inx
+            bra   :s
+:r          ora   #'0'
+            pha
+            inc   T2
+            txa
+            bne   :d
+:p          pla
+            sta   (OPtr),y
+            iny
+            dec   T2
+            bne   :p
+            rts
+
+* ReplacePage: A = a page, LoadBuf's first Y bytes its new text in
+* Master (carry set: no room)
+ReplacePage sta   RPg
+            sty   RLen
+            asl
+            tax
+            lda   PageLen,x
+            sta   ROld
+            lda   PageOff,x
+            sta   ROff
+            lda   MLen
+            sec
+            sbc   ROld
+            clc
+            adc   RLen
+            cmp   #MasterMax
+            bcs   :full
+            lda   ROff              ; what follows the page: moved
+            clc
+            adc   ROld
+            sta   RTail
+            lda   MLen
+            sec
+            sbc   RTail
+            sta   RTailN
+            lda   RTail
+            clc
+            adc   #Master
+            tax
+            lda   ROff
+            clc
+            adc   RLen
+            clc
+            adc   #Master
+            tay
+            lda   RTailN
+            jsr   MoveMem
+            ldx   #LoadBuf          ; the new text in
+            lda   ROff
+            clc
+            adc   #Master
+            tay
+            lda   RLen
+            jsr   MoveMem
+            lda   RLen
+            sec
+            sbc   ROld
+            sta   RDelta
+            lda   RPg
+            asl
+            tax
+            lda   RLen
+            sta   PageLen,x
+            ldy   RPg
+            iny
+:f          cpy   NGroups
+            bcs   :fd
+            tya
+            asl
+            tax
+            lda   PageOff,x
+            clc
+            adc   RDelta
+            sta   PageOff,x
+            iny
+            bra   :f
+:fd         lda   MLen
+            clc
+            adc   RDelta
+            sta   MLen
+            clc
+            rts
+:full       ldx   #SaveErrTx
+            jsr   Alert
+            sec
+            rts
+
+* MoveMem: A bytes from X to Y (this bank), overlapping or not
+MoveMem     sta   T0
+            beq   :x
+            sep   #$20
+            mx    %10
+            lda   MyBank
+            sta   MvpOp+1
+            sta   MvpOp+2
+            sta   MvnOp+1
+            sta   MvnOp+2
+            rep   #$20
+            mx    %00
+            stx   T1
+            sty   T2
+            lda   T2
+            cmp   T1
+            beq   :x
+            bcc   :fwd
+            lda   T1                ; to a higher place: from the end
+            clc
+            adc   T0
+            dec
+            tax
+            lda   T2
+            clc
+            adc   T0
+            dec
+            tay
+            lda   T0
+            dec
+            jsr   MvpOp
+            rts
+:fwd        ldx   T1
+            ldy   T2
+            lda   T0
+            dec
+            jsr   MvnOp
+:x          rts
+MvpOp       db    $44,0,0
+            rts
+MvnOp       db    $54,0,0
+            rts
+
+* SaveSlots: the file written again
+SaveSlots   jsr   SerializePage
+            bcc   :ok
+            rts
+:ok         jsr   ComposeFile
+            sty   FileLen
+            lda   #SlotsFile
+            ldx   #DestParms
+            jsr   SetPath
+            GSOS  _DestroyGS;DestParms
+            lda   #SlotsFile
+            ldx   #CreateParms
+            jsr   SetPath
+            GSOS  _CreateGS;CreateParms
+            bcs   :err
+            ldx   #SlotsFile
+            lda   #2
+            jsr   OpenFile
+            bcs   :err
+            lda   #LoadBuf
+            sta   RWParms+4
+            lda   MyBank
+            sta   RWParms+6
+            lda   FileLen
+            sta   RWParms+8
+            stz   RWParms+10
+            GSOS  _WriteGS;RWParms
+            php
+            GSOS  _CloseGS;CloseParms
+            plp
+            bcs   :err
+            rts
+:err        ldx   #SaveErrTx
+            jmp   Alert
+
+* ComposeFile: LoadBuf = the whole file; Y = its length
+ComposeFile lda   #LoadBuf
+            sta   OPtr
+            ldy   #0
+            lda   #'@'
+            sta   (OPtr),y
+            iny
+            ldx   #ViewKey
+:v          lda   |0,x
+            and   #$FF
+            beq   :vd
+            sta   (OPtr),y
+            inx
+            iny
+            bra   :v
+:vd         lda   ViewMode
+            ora   #'0'
+            sta   (OPtr),y
+            iny
+            lda   #$0D
+            sta   (OPtr),y
+            iny
+            sty   CIdx
+            stz   RPg
+:g          lda   RPg
+            cmp   NGroups
+            bcs   :done
+            ldy   CIdx
+            lda   #'['
+            sta   (OPtr),y
+            iny
+            lda   RPg
+            jsr   PageNameAddr
+            tax
+:nc         lda   |0,x
+            and   #$FF
+            beq   :nd
+            sta   (OPtr),y
+            inx
+            iny
+            bra   :nc
+:nd         lda   #']'
+            sta   (OPtr),y
+            iny
+            lda   #$0D
+            sta   (OPtr),y
+            iny
+            sty   CIdx
+            lda   RPg
+            asl
+            tax
+            lda   PageOff,x
+            clc
+            adc   #Master
+            sta   T4
+            lda   PageLen,x
+            sta   T5
+            lda   CIdx
+            clc
+            adc   #LoadBuf
+            tay
+            ldx   T4
+            lda   T5
+            jsr   MoveMem
+            lda   T5
+            clc
+            adc   CIdx
+            sta   CIdx
+            inc   RPg
+            bra   :g
+:done       ldy   CIdx
+            rts
+ViewKey     asc   'view=',00
+
+* CountLines: A = a page: how many lines it has
+CountLines  asl
+            tax
+            lda   PageOff,x
+            tay
+            clc
+            adc   PageLen,x
+            sta   T3
+            stz   T4
+:l          cpy   T3
+            bcs   :x
+            lda   Master,y
+            and   #$FF
+            iny
+            cmp   #$0D
+            bne   :l
+            inc   T4
+            bra   :l
+:x          lda   T4
+            rts
+
+* SwitchPage: A = a page: shown
+SwitchPage  cmp   CurG
+            beq   :x
+            pha
+            jsr   SerializePage
+            pla
+            sta   CurG
+            jmp   LoadPageNow
+:x          rts
+
+* LoadPageNow: page CurG from Master into the arrays, shown
+LoadPageNow Tool  _WaitCursor
+            lda   CurG
+            jsr   ParsePage
+            jsr   ScanAll
+            Tool  _InitCursor
+            lda   #$FFFF
+            sta   Sel
+            jmp   Relayout
+
+NextPage    lda   NGroups
+            cmp   #2
+            bcc   :x
+            lda   CurG
+            inc
+            cmp   NGroups
+            bcc   :s
+            lda   #0
+:s          jmp   SwitchPage
+:x          rts
+
+NewPage     lda   NGroups
+            cmp   #MaxGroups
+            bcc   :ok
+            ldx   #MaxPgTx
+            jmp   Alert
+:ok         stz   InBuf
+            lda   #PageQTx
+            sta   InQP
+            jsr   InputBox
+            bcs   :x
+            lda   InBuf
+            and   #$FF
+            beq   :x
+            jsr   SerializePage
+            lda   NGroups
+            asl
+            tax
+            lda   MLen
+            sta   PageOff,x
+            stz   PageLen,x
+            lda   NGroups
+            jsr   PageNameAddr
+            tay
+            ldx   #InBuf
+            jsr   CopyC
+            inc   NGroups
+            lda   NGroups
+            dec
+            sta   CurG
+            jsr   LoadPageNow
+            jmp   SaveSlots
+:x          rts
+
+RenamePage  lda   CurG
+            jsr   PageNameAddr
+            tax
+            ldy   #InBuf
+            jsr   CopyC
+            lda   #PageQTx
+            sta   InQP
+            jsr   InputBox
+            bcs   :x
+            lda   InBuf
+            and   #$FF
+            beq   :x
+            lda   CurG
+            jsr   PageNameAddr
+            tay
+            ldx   #InBuf
+            jsr   CopyC
+            jsr   SaveSlots
+            jmp   Redraw
+:x          rts
+
+* RemovePage: the page and its slots (not the apps) go
+RemovePage  lda   NGroups
+            cmp   #2
+            bcs   :ok
+            ldx   #OnePgTx
+            jmp   Alert
+:ok         ldx   #DelPgTx
+            jsr   Confirm
+            bcs   :x
+            lda   CurG              ; its text out of Master
+            ldy   #0
+            jsr   ReplacePage
+            lda   CurG
+            sta   T6
+:m          lda   T6
+            inc
+            cmp   NGroups
+            bcs   :md
+            sta   T7
+            lda   T6
+            jsr   PageNameAddr
+            tay
+            lda   T7
+            jsr   PageNameAddr
+            tax
+            jsr   CopyC
+            lda   T6
+            asl
+            tax
+            lda   PageOff+2,x
+            sta   PageOff,x
+            lda   PageLen+2,x
+            sta   PageLen,x
+            inc   T6
+            bra   :m
+:md         dec   NGroups
+            lda   CurG
+            cmp   NGroups
+            bcc   :s
+            lda   NGroups
+            dec
+            sta   CurG
+:s          jsr   LoadPageNow
+            jmp   SaveSlots
+:x          rts
+
+* MovePage: the slot chosen goes to the end of the next page
+MovePage    lda   NGroups
+            cmp   #2
+            bcs   :ok
+            ldx   #OnePgTx
+            jmp   Alert
+:ok         jsr   NeedSel
+            bcs   :x
+            lda   CurG
+            inc
+            cmp   NGroups
+            bcc   :t
+            lda   #0
+:t          sta   MoveTo
+            jsr   CountLines
+            cmp   #MaxSlots
+            bcc   :room
+            ldx   #FullTx
+            jmp   Alert
+:room       lda   #XLine            ; the slot as a line
+            sta   OPtr
+            ldy   #0
+            lda   Sel
+            sta   T6
+            jsr   BuildLine
+            sty   XLen
+            jsr   RemoveCore
+            jsr   SerializePage
+            lda   MoveTo            ; the next page's text and the line
+            asl
+            tax
+            lda   PageOff,x
+            clc
+            adc   #Master
+            tax
+            lda   MoveTo
+            asl
+            tay
+            lda   PageLen,y
+            sta   T5
+            ldy   #LoadBuf
+            lda   T5
+            jsr   MoveMem
+            ldx   #XLine
+            lda   T5
+            clc
+            adc   #LoadBuf
+            tay
+            lda   XLen
+            jsr   MoveMem
+            lda   T5
+            clc
+            adc   XLen
+            tay
+            lda   MoveTo
+            jsr   ReplacePage
+            jsr   SaveSlots
+            jmp   Relayout
+:x          rts
+
+* RemoveMissing: the slots (on this page) whose apps are gone
+CleanSlots  stz   AddN
+            stz   T6
+:l          lda   T6
+            cmp   NSlots
+            bcs   :done
+            asl
+            tax
+            lda   SlotOK,x
+            bne   :next
+            lda   T6
+            sta   Sel
+            jsr   RemoveCore
+            inc   AddN
+            bra   :l
+:next       inc   T6
+            bra   :l
+:done       lda   AddN
+            bne   :some
+            ldx   #NoMissTx
+            jmp   Alert
+:some       lda   #$FFFF
+            sta   Sel
+            jsr   SaveSlots
+            jmp   Relayout
+
+* ClearUse: A = a slot: no launches yet
+ClearUse    sta   T0
+            asl
+            tax
+            stz   SlotCount,x
+            lda   T0
+            jsr   UsedOf
+            tax
+            stz   |0,x
+            rts
+
+* CountLaunch: slot CurI launched: its count up, its time (the slots
+* file's own time once it is written) saved
+CountLaunch lda   CurI
+            asl
+            tax
+            lda   SlotCount,x
+            cmp   #9999
+            bcs   :s
+            inc
+            sta   SlotCount,x
+:s          jsr   SaveSlots
+            lda   #SlotsFile
+            ldx   #GFIParms
+            jsr   SetPath
+            GSOS  _GetFileInfoGS;GFIParms
+            bcs   :x
+            jsr   DateFmt
+            lda   CurI
+            jsr   UsedOf
+            tay
+            ldx   #DateTmp
+            jsr   CopyC
+            jmp   SaveSlots
+:x          rts
+
+* Views: what the third line of a slot shows
+ViewDate    lda   #0
+            bra   SetView
+ViewUsed    lda   #1
+            bra   SetView
+ViewCount   lda   #2
+SetView     sta   ViewMode
+            jsr   ViewChecks
+            jsr   SaveSlots
+            jmp   Redraw
+ViewChecks  stz   T6
+:l          lda   T6
+            cmp   ViewMode
+            beq   :on
+            lda   #0
+            bra   :c
+:on         lda   #1
+:c          pha
+            lda   T6
+            clc
+            adc   #iViewD
+            pha
+            Tool  _CheckMItem
+            inc   T6
+            lda   T6
+            cmp   #3
+            bcc   :l
+            rts
+
+* ThirdLine: X = the text for the third line of slot CurI
+ThirdLine   lda   ViewMode
+            beq   :d
+            cmp   #1
+            beq   :u
+            lda   CurI
+            asl
+            tax
+            lda   SlotCount,x
+            bne   :c
+            ldx   #NeverTx
+            rts
+:c          sta   T0
+            stz   MsgBuf
+            jsr   MsgNum
+            lda   T0
+            cmp   #1
+            bne   :pl
+            ldx   #LaunchTx
+            bra   :cat
+:pl         ldx   #LaunchesTx
+:cat        jsr   MsgCat
+            ldx   #MsgBuf
+            rts
+:u          lda   CurI
+            jsr   UsedOf
+            tax
+            lda   |0,x
+            and   #$FF
+            bne   :r
+            ldx   #NotUsedTx
+:r          rts
+:d          lda   CurI
+            jsr   DateOf
+            tax
+            rts
+
+* DrawTabs: the page names across the top of the window (2 or more)
+DrawTabs    lda   NGroups
+            cmp   #2
+            bcs   :jx2480_0
+            jmp   :x
+:jx2480_0
+            pea   1
+            pea   1
+            Tool  _SetPenSize
+            pea   0
+            Tool  _SetSolidPenPat
+            stz   DrawG
+:l          lda   DrawG             ; its tab: 90 wide
+            asl
+            sta   T0
+            asl
+            asl
+            asl
+            clc
+            adc   T0
+            sta   T1
+            lda   DrawG
+            asl
+            tax
+            lda   TabX,x
+            sta   FrRect+2
+            lda   #1
+            sta   FrRect
+            lda   #TabH-1
+            sta   FrRect+4
+            lda   FrRect+2
+            clc
+            adc   #TabW-4
+            sta   FrRect+6
+            PushLong FrRect
+            Tool  _FrameRect
+            lda   DrawG
+            cmp   CurG
+            bne   :txt
+            PushLong FrRect         ; the page shown: black, white text
+            Tool  _PaintRect
+            pea   $000F
+            Tool  _SetForeColor
+            pea   $0000
+            Tool  _SetBackColor
+:txt            lda   DrawG
+            jsr   PageNameAddr
+            tax
+            ldy   #0                ; (12 letters at most)
+            stz   T0
+            sep   #$20
+            mx    %10
+:nc         lda   |0,x
+            beq   :nd
+            cpy   #12
+            bcs   :nd
+            sta   MsgBuf,y
+            inx
+            iny
+            bra   :nc
+:nd         lda   #0
+            sta   MsgBuf,y
+            rep   #$20
+            mx    %00
+            lda   FrRect+2
+            clc
+            adc   #6
+            sta   PX
+            lda   #TabH-6
+            sta   PY
+            ldx   #MsgBuf
+            jsr   DrawAt
+            pea   $0000
+            Tool  _SetForeColor
+            pea   $000F
+            Tool  _SetBackColor
+            inc   DrawG
+            lda   DrawG
+            cmp   NGroups
+            bcs   :jx2556_0
+            jmp   :l
+:jx2556_0
+:x          rts
+TabX        dw    2,92,182,272
+
+* TabClick: ClickPt is in the tab strip: that page shown
+TabClick    lda   ClickPt+2
+            ldx   #0
+:d          cmp   #TabW
+            bcc   :r
+            sbc   #TabW
+            inx
+            bra   :d
+:r          cpx   NGroups
+            bcs   :x
+            txa
+            jmp   SwitchPage
+:x          rts
+
+* Confirm: X = an alert string with two buttons: carry clear for the
+* first one
+Confirm     pha
+            pea   0
+            PushLong 0
+            pea   ^AboutTx
+            phx
+            Tool  _AlertWindow
+            pla
+            cmp   #0                ; (the first button is 0)
+            beq   :ok
+            sec
+            rts
+:ok         clc
+            rts
+
+* Restart, ShutDown: GS/OS OSShutdown (the only way that is allowed)
+Restart     ldx   #RestartQTx
+            jsr   Confirm
+            bcs   :x
+            lda   #1
+            bra   OsShut
+:x          rts
+ShutDown    ldx   #ShutQTx
+            jsr   Confirm
+            bcs   :y
+            lda   #0
+OsShut      sta   ShutParms+2
+            GSOS  _OSShutdownGS;ShutParms
+            ldx   #ShutErrTx
+            jmp   Alert
+:y          rts
 
 * AddLine: LineBuf (name=path, or a path) as a new slot
 AddLine     ldx   #0                ; where is the '='?
@@ -1535,12 +2626,16 @@ AddLine     ldx   #0                ; where is the '='?
             inx
             stx   T4                ; where the path starts
 :path       lda   NSlots
+            jsr   ClearUse
+            lda   NSlots
             jsr   PathOf
             sta   SP2
             ldx   T4
             ldy   #2
 :pc         lda   LineBuf,x
             and   #$FF
+            beq   :pe
+            cmp   #'|'
             beq   :pe
             cpy   #PathMax+2
             bcs   :x                ; (too long)
@@ -1552,7 +2647,8 @@ AddLine     ldx   #0                ; where is the '='?
             inx
             iny
             bra   :pc
-:pe         dey
+:pe         stx   T6                ; (where the path ended)
+            dey
             dey
             beq   :x                ; (no path)
             tya
@@ -1585,77 +2681,71 @@ AddLine     ldx   #0                ; where is the '='?
             bne   :named
             lda   NSlots
             jsr   DefaultName
-:named      inc   NSlots
+:named      jsr   ParseExtras
+            inc   NSlots
 :x          rts
 
-* SaveSlots: the slots written to the file again
-SaveSlots   ldy   #0                ; Y: the text's length
-            stz   T6
-:s          lda   T6
-            cmp   NSlots
-            bcs   :built
-            jsr   NameOf            ; name=path, CR
-            tax
-:n          lda   |0,x
+* ParseExtras: after the path in LineBuf (T6 its end): |count|last used
+ParseExtras ldx   T6
+            lda   LineBuf,x
             and   #$FF
-            beq   :nd
-            sta   FileBuf,y
+            cmp   #'|'
+            bne   :x
             inx
-            iny
-            bra   :n
-:nd         lda   #'='
-            sta   FileBuf,y
-            iny
-            sty   T5
-            lda   T6
-            jsr   PathOf
-            tax
-            lda   |0,x
+            stz   T3
+:d          lda   LineBuf,x
+            and   #$FF
+            sec
+            sbc   #'0'
+            cmp   #10
+            bcs   :dn
             sta   T4
-            ldy   T5
-:pc         lda   T4
-            beq   :pd
-            lda   |2,x
+            lda   T3
+            asl
+            sta   T5
+            asl
+            asl
+            clc
+            adc   T5
+            clc
+            adc   T4
+            sta   T3
+            inx
+            bra   :d
+:dn         lda   NSlots
+            asl
+            tay
+            lda   T3
+            sta   SlotCount,y
+            lda   LineBuf,x
             and   #$FF
-            sta   FileBuf,y
+            cmp   #'|'
+            bne   :x
+            inx
+            lda   NSlots
+            jsr   UsedOf
+            sta   SP2
+            ldy   #0
+:u          lda   LineBuf,x
+            and   #$FF
+            beq   :ud
+            cpy   #DateSz-1
+            bcs   :ud
+            sep   #$20
+            mx    %10
+            sta   (SP2),y
+            rep   #$20
+            mx    %00
             inx
             iny
-            dec   T4
-            bra   :pc
-:pd         lda   #$0D
-            sta   FileBuf,y
-            iny
-            inc   T6
-            bra   :s
-:built      sty   FileLen
-            lda   #SlotsFile
-            ldx   #DestParms
-            jsr   SetPath
-            GSOS  _DestroyGS;DestParms
-            lda   #SlotsFile
-            ldx   #CreateParms
-            jsr   SetPath
-            GSOS  _CreateGS;CreateParms
-            bcs   :err
-            ldx   #SlotsFile
-            lda   #2
-            jsr   OpenFile
-            bcs   :err
-            lda   #FileBuf
-            sta   RWParms+4
-            lda   MyBank
-            sta   RWParms+6
-            lda   FileLen
-            sta   RWParms+8
-            stz   RWParms+10
-            GSOS  _WriteGS;RWParms
-            php
-            GSOS  _CloseGS;CloseParms
-            plp
-            bcs   :err
-            rts
-:err        ldx   #SaveErrTx
-            jmp   Alert
+            bra   :u
+:ud         sep   #$20
+            mx    %10
+            lda   #0
+            sta   (SP2),y
+            rep   #$20
+            mx    %00
+:x          rts
 
 * SetPath: A = a GS/OS string as the path of the parameters at X
 SetPath     sta   |2,x
@@ -1718,6 +2808,15 @@ FileInfo    sta   CurI
             sta   SlotOK,x
             lda   GFIParms+8
             sta   SlotType,x
+            jsr   DateFmt
+            lda   CurI
+            jsr   DateOf
+            tay
+            ldx   #DateTmp
+            jmp   CopyC
+
+* DateFmt: DateTmp = the modified date and time in GFIParms as "04 Nov 10:22"
+DateFmt
             ldx   #0                ; "04 Nov 10:22"
             lda   GFIParms+28       ; day (0-30)
             and   #$FF
@@ -1751,11 +2850,7 @@ FileInfo    sta   CurI
             jsr   TwoDig
             lda   #0
             jsr   PutCh
-            lda   CurI
-            jsr   DateOf
-            tay
-            ldx   #DateTmp
-            jmp   CopyC
+            rts
 MonthTx     asc   'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec '
 
 * PutCh: A = a character into DateTmp at X (X moves on)
@@ -3097,6 +4192,8 @@ AddSelected stz   AddI
             bcs   :next
             lda   NSlots
             sta   CurI
+            jsr   ClearUse
+            lda   CurI
             jsr   PathOf
             sta   SP2
             lda   [Ptr]
@@ -3200,7 +4297,6 @@ IPos        dw    0
 ELen        dw    0
 Star        dw    0
 Mark        dw    0
-FPos        dw    0
 FileLen     dw    0
 ContRect    dw    0,0,0,0
 FrRect      dw    0,0,0,0
@@ -3438,9 +4534,24 @@ FileMenu    asc   '>>  File  \N2',00
             asc   '--Change Slot...\N262',00
             asc   '--Rename Slot...\N263*Rr',00
             asc   '--Remove Slot\N264',00
+            asc   '--Remove Missing Slots\N288',00
             asc   '--Move Left\N265',00
             asc   '--Move Right\N266V',00
+            asc   '--Restart...\N289',00
+            asc   '--Shut Down...\N290V',00
             asc   '--Quit to Finder\N256*Qq',00
+            asc   '.',00
+PageMenu    asc   '>>  Page  \N5',00
+            asc   '--Next Page   (Tab)\N280*Tt',00
+            asc   '--New Page...\N281',00
+            asc   '--Rename Page...\N282',00
+            asc   '--Remove Page\N283',00
+            asc   '--Move Slot to Next Page\N284',00
+            asc   '.',00
+ViewMenu    asc   '>>  View  \N6',00
+            asc   '--Show File Date\N285',00
+            asc   '--Show Last Used\N286',00
+            asc   '--Show Launch Count\N287',00
             asc   '.',00
 HelpMenu    asc   '>>  Help  \N4',00
             asc   '--Starting Apps\N267',00
@@ -3448,6 +4559,7 @@ HelpMenu    asc   '>>  Help  \N4',00
             asc   '--The Menu Entries\N269',00
             asc   '--The Slots File\N270',00
             asc   '--Finding Apps\N272',00
+            asc   '--Pages and Views\N273',00
             asc   '.',00
 EditMenu    asc   '>>  Edit  \N3',00
             asc   '--Undo\N250*Zz',00
@@ -3473,7 +4585,7 @@ P2d         asc   'a slot (a frame appears) instead of starting it. The arrow ke
 P2e         asc   'pick the next one. Then use Change, Rename, Remove or Move.',00
 P2f         asc   'Choose Edit Slots again, or press Esc, to start apps again.',00
 P2g         asc   '(Click or press a key.)',00
-Page3       da    P3a,P3b,P3k,P3c,P3d,P3e,P3f,P3g,P3h,P3i,P3j,0
+Page3       da    P3a,P3b,P3k,P3c,P3d,P3e,P3f,P3m,P3g,P3n,P3h,P3i,P3j,0
 P3a         asc   'The Menu Entries',00
 P3b         asc   'Add App:  an app into a new slot.',00
 P3k         asc   'Find Apps:  looks on your disks for apps and lists them to add.',00
@@ -3481,6 +4593,8 @@ P3c         asc   'Edit Slots:  a click picks a slot instead of starting it.',00
 P3d         asc   'Change Slot:  another app for the picked slot.',00
 P3e         asc   'Rename Slot:  the name under the icon (empty: the file name).',00
 P3f         asc   'Remove Slot:  the picked slot goes.',00
+P3m         asc   'Remove Missing Slots:  removes the slots on this page whose app is gone.',00
+P3n         asc   'Restart, Shut Down:  restart or switch off the computer (it asks first).',00
 P3g         asc   'Move Left, Move Right:  change the order of the slots.',00
 P3h         asc   'Quit to Finder:  starts the Finder.',00
 P3i         asc   'Change, Rename, Remove and Move need Edit Slots and a picked slot.',00
@@ -3493,6 +4607,16 @@ P5d         asc   'First check the disks to look at (the boot disk is checked), 
 P5e         asc   'Then check the apps to add and click Add Selected. Esc stops a scan.',00
 P5f         asc   'The System folder and ProDOS itself are left out. Apps already in',00
 P5g         asc   'the launcher are not added twice.   (Click or press a key.)',00
+Page6       da    P6a,P6b,P6c,P6d,P6e,P6f,P6g,P6h,P6i,0
+P6a         asc   'Pages and Views',00
+P6b         asc   'Pages are tabs across the top: up to 4, each with up to 18 slots.',00
+P6c         asc   'The tabs show when there is more than one page. Click a tab, or press Tab.',00
+P6d         asc   'Page menu: New, Rename and Remove Page (its slots go, not the apps), and',00
+P6e         asc   'Move Slot to Next Page (Edit Slots first, then pick the slot).',00
+P6f         asc   'View menu: the third line under a name shows the date of the file, when',00
+P6g         asc   'the app was last started from GSLauncher, or how often it was started.',00
+P6h         asc   'Keys 1 to 9 start the slot with that number (in Edit Slots: pick it).',00
+P6i         asc   '(Click or press a key.)',00
 Page4       da    P4a,P4b,P4c,P4d,P4e,P4f,0
 P4a         asc   'The Slots File',00
 P4b         asc   'The slots are kept in Launcher.Slots, a text file next to',00
@@ -3501,13 +4625,10 @@ P4d         asc   'of a path stands for the disk you started from.',00
 P4e         asc   'You can edit the file with any text editor.',00
 P4f         asc   '(Click or press a key.)',00
 
-AboutTx     asc   '63/GSLauncher 1.0'
-            db    $0D,$0D
-            asc   'Your applications, one click away.'
+AboutTx     asc   '63/GSLauncher 1.1'
             db    $0D
-            asc   'Click a slot to start its app. Edit Slots (File'
-            asc   ' menu) to add, change, rename or move them.'
-            db    $0D,$0D
+            put   builddate.s
+            db    $0D
             asc   '2026 Walter Tengler.'
             asc   '/^#0',00
 NotFoundA   asc   '43/Cannot find ',00
@@ -3596,6 +4717,60 @@ VolRec      ds    MaxVols*36
 VolSel      ds    MaxVols*2
 FoundSel    ds    MaxFound*2
 BootStr     ds    40
+NGroups     dw    1
+CurG        dw    0
+MLen        dw    0
+ViewMode    dw    0
+TopOff      dw    0
+FPos        dw    0
+FEnd        dw    0
+WPage       dw    0
+HdrSeen     dw    0
+PageLines   dw    0
+SerI        dw    0
+CIdx        dw    0
+RPg         dw    0
+RLen        dw    0
+ROld        dw    0
+ROff        dw    0
+RTail       dw    0
+RTailN      dw    0
+RDelta      dw    0
+MoveTo      dw    0
+XLen        dw    0
+DrawG       dw    0
+InQP        dw    InQTx
+DigTx       dw    0
+DefPageTx   asc   'Apps',00
+PageQTx     asc   'Name for this page:',00
+NeverTx     asc   'never used',00
+NotUsedTx   asc   'not used yet',00
+LaunchTx    asc   ' launch',00
+LaunchesTx  asc   ' launches',00
+MaxPgTx     asc   '43/There can be 4 pages at most.'
+            asc   '/^#0',00
+OnePgTx     asc   '43/There is only one page.'
+            asc   '/^#0',00
+NoMissTx    asc   '33/No slot on this page has a missing app.'
+            asc   '/^#0',00
+DelPgTx     asc   '43/Remove this page and its slots? The apps themselves are not touched.'
+            asc   '/^Remove/Cancel',00
+RestartQTx  asc   '43/Restart the computer now?'
+            asc   '/^Restart/Cancel',00
+ShutQTx     asc   '43/Shut down the computer now?'
+            asc   '/^Shut Down/Cancel',00
+ShutErrTx   asc   '43/The computer could not be shut down.'
+            asc   '/^#0',00
+ShutParms   dw    1
+            dw    0
+PageName    ds    MaxGroups*32
+PageOff     ds    MaxGroups*2
+PageLen     ds    MaxGroups*2
+SlotCount   ds    MaxSlots*2
+SlotUsed    ds    MaxSlots*DateSz
+Master      ds    MasterMax+4
+LoadBuf     ds    MasterMax+400
+XLine       ds    400
 AppName     ds    66
 PatBuf      ds    18
 DateTmp     ds    20
@@ -3611,5 +4786,4 @@ SlotOK      ds    MaxSlots*2
 SlotName    ds    MaxSlots*NameSz
 SlotDate    ds    MaxSlots*DateSz
 SlotPath    ds    MaxSlots*PathSz
-FileBuf     ds    FileMax+4
 SlotIcon    ds    MaxSlots*IconMax

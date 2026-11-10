@@ -88,6 +88,7 @@ _DInfoGS    equ   $202C
 _DStatusGS  equ   $202D
 _VolumeGS   equ   $2008
 _QuitGS     equ   $2029
+_OSShutdownGS equ $2003
 _GetBootVolGS equ $2028
 _SetPrefixGS equ  $2009
 
@@ -104,6 +105,7 @@ K_LEFT      equ   $08
 K_RIGHT     equ   $15
 K_RETURN    equ   $0D
 K_ESC       equ   $1B
+K_TAB       equ   $09
 K_UP        equ   $0B
 K_DOWN      equ   $0A
 K_DEL       equ   $7F
@@ -120,8 +122,8 @@ PathSz      equ   260               ; bytes a slot's path takes
 NameMax     equ   31                ; (a slot's name: a C string)
 NameSz      equ   32
 DateSz      equ   16
-IconMax     equ   1024              ; (a slot's icon record, at most)
-FileMax     equ   6000              ; (the slots file, at most)
+IconMax     equ   768               ; (a slot's icon record, at most)
+MasterMax   equ   7000              ; (the slots file, at most)
 LineMax     equ   300
 
 * the window: cells of CellW x CellH, 3 to 5 a row
@@ -147,6 +149,7 @@ T6          equ   $1C
 T7          equ   $1E
 PX          equ   $20
 PY          equ   $22
+OPtr        equ   $0C               ; word: where BuildLine writes
 
 * the Find Apps window (local coordinates)
 MaxFound    equ   100
@@ -156,3 +159,8 @@ RowsOnb     equ   8
 OListTop    equ   36
 OInfoY      equ   144
 OBtnTop     equ   150
+
+* pages (tabs)
+MaxGroups   equ   4
+TabH        equ   18
+TabW        equ   90
