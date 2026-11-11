@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GSLauncher User's Guide</title>
+<!-- The template of the manual: make_manual.py adds the page rules, the
+     contents' and index's page numbers, and writes build/manual/manual.html. -->
+<link rel="stylesheet" href="manual.css">
+<!--PAGES-->
+</head>
+<body>
+
+<!-- ====================== the cover ====================== -->
+<section class="cover">
+  <div class="cv-head">
+    <div class="stripes"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div>
+      <p class="cv-title">GSLauncher</p>
+      <p class="cv-sub">User&rsquo;s Guide</p>
+    </div>
+  </div>
+  <div class="cv-photo">
+    <div class="mon">
+      <div class="case"></div>
+      <div class="bezel"><div class="glass"><img src="../img/main.png" alt=""></div></div>
+      <div class="badge stripes"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="stand"></div>
+    </div>
+  </div>
+  <p class="cv-foot">For the Apple IIgs</p>
+</section>
+
+<!-- ====================== the copyright page ====================== -->
+<section class="front legal">
+  <p class="legal-title">GSLauncher User&rsquo;s Guide</p>
+  <p>Version 1.1</p>
+  <p>&copy; 2026 Walter Tengler. GSLauncher is free, open-source software. You may copy this guide and give it away, whole and unchanged.</p>
+  <p>GSLauncher is an independent program. It is not made, sold or endorsed by Apple Inc. Apple, Apple IIgs, GS/OS, ProDOS, Finder and Macintosh are trademarks of Apple Inc. Other names are trademarks of their owners.</p>
+  <p>This guide is set in Apple Garamond, as Apple&rsquo;s own guides of the time were. The screen pictures were taken from GSLauncher running on an Apple IIgs in the MAME emulator.</p>
+  <p>The homepage: portwally.github.io/GSLauncher</p>
+</section>
+
+<!-- ====================== the contents ====================== -->
+<section class="front toc-page">
+  <h1 class="front-title">Contents</h1>
+  <div class="toc">
+    <!--TOC-->
+  </div>
+</section>
+
+<!-- ====================== the preface ====================== -->
+<section class="chapter preface" id="preface" data-label="Preface" data-title="About This Guide">
+  <div class="opener">
+    <p class="ch-label">Preface</p>
+    <h1>About This Guide</h1>
+  </div>
+  <div class="body">
+    <p>GSLauncher is a program launcher for the Apple IIgs. It shows the programs you use most in one window, each with its icon and its name. You click one and it starts. When you quit that program, you are back at GSLauncher, ready to start the next.</p>
+    <p>This guide shows you how. Chapter 1 gets GSLauncher running, and Chapter 2 covers the one thing you will do with it every day: starting programs. Read those first. The chapters after them each take one thing GSLauncher can do, so you can read them as you need them. The appendixes list every menu command and key, and what to do when something goes wrong.</p>
+
+    <h2>What you should know</h2>
+    <p>You should know how to use your Apple IIgs: how to start it with System 6, how to use the mouse, choose from a menu and click a button in a dialog box. If you don&rsquo;t, see the guides that came with your computer.</p>
+
+    <h2>Conventions in this guide</h2>
+    <p>Keys you press are shown like this: <kbd>Return</kbd>, <kbd>Tab</kbd>, <kbd>Escape</kbd>. When two keys are joined by a hyphen, as in <kbd>Apple</kbd>-<kbd>F</kbd>, hold down the first while you press the second. The Apple key is the one marked with the Apple symbol and <span class="cmd">&#8984;</span>, beside the Space bar.</p>
+    <p>Menu commands are named with their menu: &ldquo;choose Find Apps from the File menu.&rdquo;</p>
+    <div class="note"><span class="nt">By the way</span>Notes like this one, in the margin, tell you something useful that you can do without.</div>
+    <p>A <b>slot</b> is one place in GSLauncher&rsquo;s window: an icon, a name and a line of information for one program.</p>
+    <p>This guide calls the things you start <b>programs</b>. GSLauncher&rsquo;s menus call them apps, for short.</p>
+    <div class="important"><span class="nt">Important</span>Text marked like this tells you something you should know to get the result you want.</div>
+    <div class="warning"><span class="nt">Warning</span>Text marked like this warns you of something that can lose your work.</div>
+  </div>
+</section>
+
+<!-- ====================== 1 ====================== -->
+<section class="chapter" id="ch1" data-label="Chapter 1" data-title="Getting Started">
+  <div class="opener">
+    <p class="ch-label">Chapter 1</p>
+    <h1>Getting Started</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <h2>What you need</h2>
+    <ul>
+      <li>An Apple IIgs</li>
+      <li>System 6 (GS/OS) on a startup disk: a 3.5-inch disk or a hard disk</li>
+    </ul>
+    <p>GSLauncher also runs in an Apple IIgs emulator such as MAME. Everything in this guide works the same there.</p>
+
+    <h2>Getting the program disk</h2>
+    <p>GSLauncher comes as <i>GSLauncher.po</i>, an image of an 800K 3.5-inch disk. Download it from the GSLauncher homepage. To use it on a real Apple IIgs, write it to a 3.5-inch disk with a disk-copying program. In an emulator, put the image in the emulator&rsquo;s 3.5-inch drive.</p>
+    <p>The disk holds three things: the program <i>GSLauncher</i>, a <i>ReadMe</i> file with a short summary of this guide, and an <i>Icons</i> folder, which gives the program its icon in the Finder.</p>
+
+    <h2>Putting GSLauncher on your startup disk</h2>
+    <p>GSLauncher is most useful on the disk you start your computer from.</p>
+    <div class="note"><span class="nt">By the way</span>GSLauncher keeps its list of programs in a file called <i>Launcher.Slots</i>, in its own folder. Chapter 9 tells you what is in it.</div>
+    <ol>
+      <li>Start your Apple IIgs with System 6.</li>
+      <li>In the Finder, make a new folder on your startup disk and name it <i>GSLauncher</i>.</li>
+      <li>Drag the GSLauncher program and the Icons folder from the program disk into the new folder.</li>
+    </ol>
+    <div class="important"><span class="nt">Important</span>GSLauncher must be able to write to its folder, to remember your programs. Don&rsquo;t run it from a locked disk.</div>
+
+    <h2>Starting GSLauncher</h2>
+    <ol>
+      <li>In the Finder, open the GSLauncher folder.</li>
+      <li>Double-click the GSLauncher icon.</li>
+    </ol>
+    <p>To have GSLauncher start by itself whenever you switch the computer on, see Chapter 7.</p>
+
+    <h2>The first start</h2>
+    <p>The first time you start GSLauncher it has no programs yet, so it offers to look for them. The Find Apps window opens and lists your disks.</p>
+    <figure>
+      <div class="shot"><img src="../img/find1.png" alt=""></div>
+      <figcaption>The first start: Find Apps asks which disks to look at</figcaption>
+    </figure>
+    <ol>
+      <li>Click Scan (or press <kbd>Return</kbd>) to look on your startup disk.</li>
+      <li>When the list of programs appears, click the check box of each one you want.</li>
+      <li>Click Add Selected.</li>
+    </ol>
+    <p>The programs you checked appear in GSLauncher&rsquo;s window. Chapter 3 tells you all about Find Apps. If you would rather add your programs one at a time, click Cancel and see Chapter 4.</p>
+
+    <h2>The GSLauncher window</h2>
+    <figure>
+      <div class="shot"><img src="../img/main.png" alt=""></div>
+      <figcaption>GSLauncher with three programs</figcaption>
+    </figure>
+    <p>Across the top of the screen is the menu bar, with the Apple, File, Page, View, Edit and Help menus. Below it is GSLauncher&rsquo;s window. Each program in it has a <b>slot</b>:</p>
+    <ul>
+      <li>The program&rsquo;s <b>icon</b>, the same one the Finder shows for it</li>
+      <li>Its <b>name</b></li>
+      <li>A third line: the date and time the program&rsquo;s file was last changed. You can have it show other things instead (Chapter 6).</li>
+      <li>A small <b>number</b> at the top left of the first nine slots: the key that starts the program</li>
+    </ul>
+    <p>The window holds five slots in a row and grows downward as you add more. You can drag it by its title bar.</p>
+
+    <h2>Getting help</h2>
+    <p>The Help menu explains GSLauncher a page at a time: Starting Apps, Editing the Slots, The Menu Entries, The Slots File, Finding Apps, and Pages and Views. Choose one to read it. Click the mouse or press any key to put it away.</p>
+    <figure>
+      <div class="shot"><img src="../img/help.png" alt=""></div>
+      <figcaption>A page of help</figcaption>
+    </figure>
+    <p>Choose About GSLauncher from the Apple menu to see the version and the day it was built.</p>
+
+    <h2>Quitting</h2>
+    <p>Choose Quit to Finder from the File menu (<kbd>Apple</kbd>-<kbd>Q</kbd>). The Finder starts.</p>
+  </div>
+</section>
+
+<!-- ====================== 2 ====================== -->
+<section class="chapter" id="ch2" data-label="Chapter 2" data-title="Starting Programs">
+  <div class="opener">
+    <p class="ch-label">Chapter 2</p>
+    <h1>Starting Programs</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <h2>With the mouse</h2>
+    <p>Click a slot. One click is enough. The screen clears, and the program starts.</p>
+
+    <h2>With the keyboard</h2>
+    <p>Press the number key shown at the top left of a slot: <kbd>1</kbd> starts the first program, <kbd>2</kbd> the second, and so on up to <kbd>9</kbd>. Slots after the ninth have no key; start those with the mouse.</p>
+
+    <h2>Coming back</h2>
+    <p>When you quit the program, GSLauncher appears again, just as you left it. You don&rsquo;t pass through the Finder.</p>
+    <div class="important"><span class="nt">Important</span>A program has to quit in the usual way to bring you back. A few programs, mostly games, can only be left by restarting the computer. After those, GSLauncher comes back only if you have set it to start with the computer (Chapter 7).</div>
+
+    <h2>The programs GSLauncher can start</h2>
+    <p>GSLauncher starts two kinds of programs:</p>
+    <ul>
+      <li><b>GS/OS applications</b>, the programs made for the Apple IIgs desktop. The Finder calls them applications; their file type is S16.</li>
+      <li><b>ProDOS 8 programs</b>, the programs made for earlier Apple II computers. Their names usually end in <i>.SYSTEM</i>; their file type is SYS.</li>
+    </ul>
+    <p>Both kinds come back to GSLauncher when you quit them.</p>
+    <div class="note"><span class="nt">By the way</span>A ProDOS 8 program finds the files it needs in its own folder, just as if you had started it from the Finder.</div>
+
+    <h2>When a program is not found</h2>
+    <p>If a program&rsquo;s file has been moved, renamed or deleted, or its disk is not in a drive, its slot shows the icon dimmed and the words <i>not found</i>.</p>
+    <figure>
+      <div class="shot"><img src="../img/notfound.png" alt=""></div>
+      <figcaption>The fifth slot&rsquo;s program is not found</figcaption>
+    </figure>
+    <p>If you click such a slot, GSLauncher tells you it cannot find the program. You can then:</p>
+    <ul>
+      <li>Put the program&rsquo;s disk in a drive, and start GSLauncher again.</li>
+      <li>Tell GSLauncher where the program is now, with Change Slot (Chapter 4).</li>
+      <li>Remove the slot, with Remove Slot or Remove Missing Slots (Chapter 4).</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====================== 3 ====================== -->
+<section class="chapter" id="ch3" data-label="Chapter 3" data-title="Finding Your Programs">
+  <div class="opener">
+    <p class="ch-label">Chapter 3</p>
+    <h1>Finding Your Programs</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <p>Find Apps looks through your disks for programs and lists them, so you can add many at once. It opens by itself the first time you start GSLauncher. To open it at any other time, choose Find Apps from the File menu (<kbd>Apple</kbd>-<kbd>F</kbd>).</p>
+
+    <h2>Choosing the disks</h2>
+    <p>Find Apps first lists every disk in your drives. The disk you started the computer from is marked <i>(boot disk)</i>, and its box is checked.</p>
+    <ul>
+      <li>Click a disk to check it or uncheck it.</li>
+      <li>Click All to check every disk, None to uncheck them all.</li>
+    </ul>
+    <p>Then click Scan, or press <kbd>Return</kbd>. GSLauncher looks through every folder on the checked disks. The line under the list names the folder it is looking in.</p>
+    <div class="note"><span class="nt">By the way</span>A big hard disk takes a while. Press <kbd>Escape</kbd> to stop the scan; Find Apps lists what it has found so far.</div>
+
+    <h2>Choosing the programs</h2>
+    <p>When the scan is done, Find Apps lists the programs it found, each with the folders that lead to it. A star (*) at the start stands for your startup disk.</p>
+    <figure>
+      <div class="shot"><img src="../img/find2.png" alt=""></div>
+      <figcaption>The programs Find Apps found</figcaption>
+    </figure>
+    <ul>
+      <li>Click a program to check it or uncheck it.</li>
+      <li>Click All to check every program, None to uncheck them all.</li>
+    </ul>
+    <p>When more programs are found than fit in the window, a <b>scroll bar</b> appears beside the list:</p>
+    <table class="keys">
+      <tr><td>Click an arrow</td><td>The list moves one line</td></tr>
+      <tr><td>Click above or below the black box</td><td>The list moves a windowful</td></tr>
+      <tr><td>Drag the black box</td><td>The list follows the pointer</td></tr>
+      <tr><td><kbd>&uarr;</kbd> <kbd>&darr;</kbd></td><td>The list moves one line</td></tr>
+      <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>The list moves a windowful</td></tr>
+    </table>
+    <p>Click Add Selected, or press <kbd>Return</kbd>. Each checked program gets a slot on the page you are looking at, named after its file. Click Cancel, or press <kbd>Escape</kbd>, to add nothing.</p>
+
+    <h2>What Find Apps leaves out</h2>
+    <ul>
+      <li>The <i>System</i> folder at the top of a disk, and everything in it. Its programs belong to the system.</li>
+      <li>The file <i>ProDOS</i> itself.</li>
+      <li>Programs more than seven folders deep.</li>
+    </ul>
+    <p>A program that already has a slot on the page is not added a second time. If the page fills up, GSLauncher tells you, and adds no more.</p>
+    <div class="note"><span class="nt">By the way</span>Find Apps lists up to 100 programs. If your disks hold more, scan them one at a time.</div>
+  </div>
+</section>
+
+<!-- ====================== 4 ====================== -->
+<section class="chapter" id="ch4" data-label="Chapter 4" data-title="Changing the Slots">
+  <div class="opener">
+    <p class="ch-label">Chapter 4</p>
+    <h1>Changing the Slots</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <h2>Adding one program</h2>
+    <ol>
+      <li>Choose Add App from the File menu (<kbd>Apple</kbd>-<kbd>N</kbd>).</li>
+      <li>In the dialog box, find the program and click Open.</li>
+    </ol>
+    <figure>
+      <div class="shot"><img src="../img/addapp.png" alt=""></div>
+      <figcaption>Add App: choosing a program</figcaption>
+    </figure>
+    <p>The program gets the next free slot, named after its file. If you choose a file that is not a program, GSLauncher tells you so and adds nothing.</p>
+
+    <h2>Edit Slots</h2>
+    <p>Normally a click starts a program. To work on the slots themselves, choose Edit Slots from the File menu (<kbd>Apple</kbd>-<kbd>E</kbd>). The command gets a check mark, and the window&rsquo;s title changes to <i>GSLauncher: Edit Slots</i>. Now a click <b>picks</b> a slot instead of starting its program: a frame appears round it.</p>
+    <figure>
+      <div class="shot"><img src="../img/edit.png" alt=""></div>
+      <figcaption>Edit Slots: the second slot is picked</figcaption>
+    </figure>
+    <table class="keys">
+      <tr><td>Click a slot</td><td>Picks it</td></tr>
+      <tr><td><kbd>1</kbd> to <kbd>9</kbd></td><td>Picks the slot with that number</td></tr>
+      <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Picks the slot before or after</td></tr>
+      <tr><td><kbd>Escape</kbd></td><td>Leaves Edit Slots</td></tr>
+    </table>
+    <p>The commands in the rest of this chapter work on the picked slot. When you are done, choose Edit Slots again or press <kbd>Escape</kbd>. The check mark and the frame go away, and a click starts a program again.</p>
+    <div class="note"><span class="nt">By the way</span>If you choose one of these commands without a picked slot, GSLauncher reminds you to choose Edit Slots and click a slot first.</div>
+
+    <h2>Giving a slot another program</h2>
+    <p>Pick the slot and choose Change Slot from the File menu. Find the program in the dialog box and click Open. The slot takes the new program&rsquo;s icon and name.</p>
+    <p>Use this when you have moved a program to another folder or another disk and its slot says <i>not found</i>.</p>
+
+    <h2>Renaming a slot</h2>
+    <p>Pick the slot and choose Rename Slot from the File menu (<kbd>Apple</kbd>-<kbd>R</kbd>). Type the new name and press <kbd>Return</kbd>. Press <kbd>Delete</kbd> to rub out a letter, <kbd>Escape</kbd> to leave the name as it was.</p>
+    <figure>
+      <div class="shot"><img src="../img/rename.png" alt=""></div>
+      <figcaption>Rename Slot</figcaption>
+    </figure>
+    <p>The name is only what GSLauncher shows; the program&rsquo;s file keeps its own name. A name can be up to 31 letters long, but a long one is cut off to fit under the icon. To get the file&rsquo;s name back, rub out the whole name and press <kbd>Return</kbd>.</p>
+
+    <h2>Putting the slots in order</h2>
+    <p>Pick a slot and choose Move Left or Move Right from the File menu. The slot changes places with its neighbor and stays picked, so you can choose the command again to move it further. The numbers follow the order: the first slot is always <kbd>1</kbd>.</p>
+
+    <h2>Removing a slot</h2>
+    <p>Pick the slot and choose Remove Slot from the File menu. The slot is gone, and the ones after it move up.</p>
+    <p>Removing a slot never touches the program. Its file stays on your disk, and you can add it again at any time.</p>
+
+    <h2>Removing the missing ones</h2>
+    <p>After you have tidied your disks, some slots may say <i>not found</i>. Choose Remove Missing Slots from the File menu to remove all of them on the page at once. You don&rsquo;t need Edit Slots for this.</p>
+    <div class="important"><span class="nt">Important</span>A program on a disk that is not in a drive counts as missing. Put your disks in before you choose Remove Missing Slots.</div>
+  </div>
+</section>
+
+<!-- ====================== 5 ====================== -->
+<section class="chapter" id="ch5" data-label="Chapter 5" data-title="Pages">
+  <div class="opener">
+    <p class="ch-label">Chapter 5</p>
+    <h1>Pages</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <p>A page of slots holds up to 18 programs. When you have more, or want to keep your games apart from your work, add pages. GSLauncher can have four.</p>
+
+    <h2>Adding a page</h2>
+    <ol>
+      <li>Choose New Page from the Page menu.</li>
+      <li>Type a name for the page and press <kbd>Return</kbd>.</li>
+    </ol>
+    <figure>
+      <div class="shot"><img src="../img/newpage.png" alt=""></div>
+      <figcaption>New Page</figcaption>
+    </figure>
+    <p>The new page appears, empty. Add programs to it with Add App or Find Apps: they always go onto the page you are looking at.</p>
+    <p>As soon as there is more than one page, <b>tabs</b> appear across the top of the window, one for each page. The tab of the page you are looking at is black. Your first page is called <i>Apps</i> until you rename it.</p>
+    <figure>
+      <div class="shot"><img src="../img/pages.png" alt=""></div>
+      <figcaption>Two pages: Tools and Games</figcaption>
+    </figure>
+
+    <h2>Going to another page</h2>
+    <ul>
+      <li>Click the page&rsquo;s tab.</li>
+      <li>Or press <kbd>Tab</kbd> to go to the next page. After the last page comes the first.</li>
+      <li>Or choose Next Page from the Page menu (<kbd>Apple</kbd>-<kbd>T</kbd>).</li>
+    </ul>
+    <p>The number keys start the programs of the page you are looking at.</p>
+
+    <h2>Renaming a page</h2>
+    <p>Go to the page and choose Rename Page from the Page menu. Type the new name and press <kbd>Return</kbd>.</p>
+    <div class="note"><span class="nt">By the way</span>A tab shows the first twelve letters of a name. Short names read best.</div>
+
+    <h2>Moving a slot to another page</h2>
+    <ol>
+      <li>Choose Edit Slots from the File menu and click the slot.</li>
+      <li>Choose Move Slot to Next Page from the Page menu.</li>
+    </ol>
+    <p>The slot goes to the end of the next page, with its name and its count of launches. From the last page it goes to the first. To move it two pages on, go to the next page and move it again.</p>
+
+    <h2>Removing a page</h2>
+    <p>Go to the page and choose Remove Page from the Page menu. GSLauncher asks first.</p>
+    <figure>
+      <div class="shot"><img src="../img/removepage.png" alt=""></div>
+      <figcaption>Remove Page asks first</figcaption>
+    </figure>
+    <p>Click Remove, and the page and its slots are gone. The programs themselves stay on your disk. You can&rsquo;t remove the last page.</p>
+    <div class="warning"><span class="nt">Warning</span>Removing a page can&rsquo;t be undone. To keep some of its slots, move them to another page first.</div>
+  </div>
+</section>
+
+<!-- ====================== 6 ====================== -->
+<section class="chapter" id="ch6" data-label="Chapter 6" data-title="The View Menu">
+  <div class="opener">
+    <p class="ch-label">Chapter 6</p>
+    <h1>The View Menu</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <p>The third line of a slot, under the program&rsquo;s name, can show one of three things. Choose which from the View menu. The one in use has a check mark, and GSLauncher remembers your choice.</p>
+    <figure>
+      <div class="shot"><img src="../img/menu-view.png" alt=""></div>
+      <figcaption>The View menu</figcaption>
+    </figure>
+
+    <h2>Show File Date</h2>
+    <p>The day and time the program&rsquo;s file was last changed, such as <i>11 Nov 01:58</i>. This is what GSLauncher shows at first.</p>
+    <div class="note"><span class="nt">By the way</span>If you write programs yourself, the date tells you at a glance that your newest version is the one on the disk.</div>
+
+    <h2>Show Last Used</h2>
+    <p>The day and time you last started the program from GSLauncher. A program you have not started yet says <i>not used yet</i>.</p>
+    <figure>
+      <div class="shot"><img src="../img/lastused.png" alt=""></div>
+      <figcaption>Show Last Used</figcaption>
+    </figure>
+
+    <h2>Show Launch Count</h2>
+    <p>How many times you have started the program from GSLauncher, such as <i>42 launches</i>. A program you have not started yet says <i>never used</i>.</p>
+    <p>GSLauncher counts every start, whichever view you use, so you can switch between the three at any time. A slot keeps its count when you rename it or move it. If you give it another program with Change Slot, the count starts again.</p>
+    <div class="note"><span class="nt">By the way</span>Only starts from GSLauncher are counted. Starting a program from the Finder doesn&rsquo;t change its count.</div>
+  </div>
+</section>
+
+<!-- ====================== 7 ====================== -->
+<section class="chapter" id="ch7" data-label="Chapter 7" data-title="Starting With the Computer">
+  <div class="opener">
+    <p class="ch-label">Chapter 7</p>
+    <h1>Starting With the Computer</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <p>GSLauncher can be the first thing you see when you switch your Apple IIgs on, in place of the Finder.</p>
+
+    <h2>Making GSLauncher the startup program</h2>
+    <p>System 6 has a control panel for this, called Set Start.</p>
+    <ol>
+      <li>Choose Control Panels from the Apple menu.</li>
+      <li>Open Set Start.</li>
+      <li>Under <i>Start up with</i>, choose Select Application.</li>
+      <li>In the dialog box, find GSLauncher and click Open.</li>
+      <li>Close the control panel and restart your computer.</li>
+    </ol>
+    <p>From now on GS/OS starts GSLauncher instead of the Finder.</p>
+    <div class="note"><span class="nt">By the way</span>If Set Start is not among your control panels, install it from your System 6 disks with the Installer.</div>
+
+    <h2>Going to the Finder</h2>
+    <p>Choose Quit to Finder from the File menu (<kbd>Apple</kbd>-<kbd>Q</kbd>). The Finder starts, and you can copy files, format disks and do everything else it is for. To come back, open the GSLauncher folder and double-click GSLauncher, or restart.</p>
+
+    <h2>Getting the Finder back for good</h2>
+    <p>Open Set Start again and choose Finder under <i>Start up with</i>.</p>
+
+    <h2>Restarting</h2>
+    <p>Choose Restart from the File menu. GSLauncher asks first. Click Restart, and GS/OS closes everything properly and starts the computer again.</p>
+
+    <h2>Shutting down</h2>
+    <p>Choose Shut Down from the File menu. GSLauncher asks first.</p>
+    <figure>
+      <div class="shot"><img src="../img/confirm.png" alt=""></div>
+      <figcaption>Shut Down asks first</figcaption>
+    </figure>
+    <p>Click Shut Down. GS/OS closes everything properly and tells you when you may switch the computer off.</p>
+    <figure>
+      <div class="shot"><img src="../img/shutdown.png" alt=""></div>
+      <figcaption>Now you may switch off</figcaption>
+    </figure>
+    <p>If you change your mind, click Restart there.</p>
+    <div class="important"><span class="nt">Important</span>Always shut down before you switch off. It makes sure everything you saved is really on the disk.</div>
+  </div>
+</section>
+
+<!-- ====================== 8 ====================== -->
+<section class="chapter" id="ch8" data-label="Chapter 8" data-title="Icons">
+  <div class="opener">
+    <p class="ch-label">Chapter 8</p>
+    <h1>Icons</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <h2>Where the icons come from</h2>
+    <p>GSLauncher has no pictures of its own for your programs. It uses the ones the Finder uses, from the Finder&rsquo;s icon files. It looks for a program&rsquo;s icon in two places, in this order:</p>
+    <ol>
+      <li>An <i>Icons</i> folder in the same folder as the program</li>
+      <li>The <i>Icons</i> folder at the top of the program&rsquo;s disk</li>
+    </ol>
+    <p>It takes the first icon it finds that is meant for the program: one for the program&rsquo;s kind of file and for its name. So a program that has its own icon in the Finder nearly always has it in GSLauncher too.</p>
+
+    <h2>Programs without an icon</h2>
+    <p>A program for which no icon is found gets a plain one: a small window with a diamond in it. The program starts just the same.</p>
+
+    <h2>Giving a program an icon</h2>
+    <p>Many programs come with an icon file. Put it into an <i>Icons</i> folder next to the program, or into the Icons folder at the top of the disk, and start GSLauncher again.</p>
+    <p>You can also draw your own with an icon editor for the Apple IIgs. Save the icon for applications (or for ProDOS 8 system files) with the program&rsquo;s name, in one of the two Icons folders.</p>
+    <div class="note"><span class="nt">By the way</span>GSLauncher reads the icons when it starts, when you go to another page, and when you add or change a slot.</div>
+  </div>
+</section>
+
+<!-- ====================== 9 ====================== -->
+<section class="chapter" id="ch9" data-label="Chapter 9" data-title="The Slots File">
+  <div class="opener">
+    <p class="ch-label">Chapter 9</p>
+    <h1>The Slots File</h1>
+    <!--INCH-->
+  </div>
+  <div class="body">
+    <p>Everything GSLauncher remembers is in one text file: <i>Launcher.Slots</i>, in the same folder as the program. GSLauncher writes it again whenever you change something or start a program. You never have to look at it. But because it is plain text, you can read it, change it with any text editor, and copy it to another disk.</p>
+
+    <h2>What is in it</h2>
+    <p>The file has one line for each thing GSLauncher remembers:</p>
+    <table class="keys ref">
+      <tr><td><kbd>@view=2</kbd></td><td>The View menu&rsquo;s choice: 0 for the file date, 1 for last used, 2 for the launch count</td></tr>
+      <tr><td><kbd>[Tools]</kbd></td><td>A page and its name. The slots on the lines below belong to it.</td></tr>
+      <tr><td><kbd>Name=path</kbd></td><td>A slot: the name under the icon, an equal sign, and the path to the program</td></tr>
+    </table>
+    <p>A small file looks like this:</p>
+    <pre class="listing">@view=0
+[Tools]
+Writer=*:Apps:Writer:Writer
+Paint=*:Apps:Paint:Paint|12|04 Nov 09:20
+[Games]
+Chess=:Games.Disk:Chess:Chess.System</pre>
+
+    <h2>Paths</h2>
+    <p>A path names the disk, the folders and the file, with colons between them: <i>:Games.Disk:Chess:Chess.System</i>.</p>
+    <p>A <b>star</b> (*) in place of the disk&rsquo;s name stands for the disk you started the computer from. Find Apps writes the paths on your startup disk this way, so they still work if you rename the disk or copy everything to a bigger one.</p>
+
+    <h2>Counts and times</h2>
+    <p>After a path, GSLauncher adds how often you started the program and when you last did: <i>|12|04 Nov 09:20</i>. A slot you have never used has neither. If you write a line yourself, leave them out.</p>
+
+    <h2>Changing the file yourself</h2>
+    <ul>
+      <li>Change it while GSLauncher is not running, then start GSLauncher.</li>
+      <li>A line with only a path, without a name and an equal sign, gets the file&rsquo;s name.</li>
+      <li>Lines can end with a Return or a line feed, so a file from another computer works.</li>
+      <li>Slots before the first page line go onto a page called Apps.</li>
+    </ul>
+    <div class="warning"><span class="nt">Warning</span>GSLauncher writes the whole file again when you change a slot or start a program. Notes of your own in the file (lines that start with # or a semicolon) are not kept.</div>
+
+    <h2>Starting over</h2>
+    <p>To make GSLauncher forget everything, quit to the Finder and drag Launcher.Slots to the Trash. The next time you start GSLauncher, Find Apps opens as it did the first time.</p>
+    <div class="note"><span class="nt">By the way</span>To keep a copy of your setup, copy Launcher.Slots to another disk. Copy it back to restore it.</div>
+  </div>
+</section>
+
+<!-- ====================== A ====================== -->
+<section class="chapter appendix" id="appa" data-label="Appendix A" data-title="Menus and Keys">
+  <div class="opener">
+    <p class="ch-label">Appendix A</p>
+    <h1>Menus and Keys</h1>
+  </div>
+  <div class="body">
+    <h2>The File menu</h2>
+    <figure>
+      <div class="shot"><img src="../img/menu-file.png" alt=""></div>
+      <figcaption>The File menu</figcaption>
+    </figure>
+    <table class="keys ref">
+      <tr><td>Add App&hellip; <kbd>Apple</kbd>-<kbd>N</kbd></td><td>Adds a program you choose to the page</td></tr>
+      <tr><td>Find Apps&hellip; <kbd>Apple</kbd>-<kbd>F</kbd></td><td>Looks for programs on your disks and lists them</td></tr>
+      <tr><td>Edit Slots <kbd>Apple</kbd>-<kbd>E</kbd></td><td>Makes a click pick a slot instead of starting it; choose it again to go back</td></tr>
+      <tr><td>Change Slot&hellip;</td><td>Gives the picked slot another program</td></tr>
+      <tr><td>Rename Slot&hellip; <kbd>Apple</kbd>-<kbd>R</kbd></td><td>Changes the name under the picked slot&rsquo;s icon</td></tr>
+      <tr><td>Remove Slot</td><td>Removes the picked slot</td></tr>
+      <tr><td>Remove Missing Slots</td><td>Removes every slot on the page whose program is not found</td></tr>
+      <tr><td>Move Left, Move Right</td><td>Moves the picked slot one place</td></tr>
+      <tr><td>Restart&hellip;</td><td>Starts the computer again</td></tr>
+      <tr><td>Shut Down&hellip;</td><td>Gets the computer ready to be switched off</td></tr>
+      <tr><td>Quit to Finder <kbd>Apple</kbd>-<kbd>Q</kbd></td><td>Starts the Finder</td></tr>
+    </table>
+
+    <h2>The Page menu</h2>
+    <figure>
+      <div class="shot"><img src="../img/menu-page.png" alt=""></div>
+      <figcaption>The Page menu</figcaption>
+    </figure>
+    <table class="keys ref">
+      <tr><td>Next Page <kbd>Apple</kbd>-<kbd>T</kbd></td><td>Shows the next page (also <kbd>Tab</kbd>)</td></tr>
+      <tr><td>New Page&hellip;</td><td>Adds a page</td></tr>
+      <tr><td>Rename Page&hellip;</td><td>Changes the name on the page&rsquo;s tab</td></tr>
+      <tr><td>Remove Page</td><td>Removes the page and its slots</td></tr>
+      <tr><td>Move Slot to Next Page</td><td>Moves the picked slot to the end of the next page</td></tr>
+    </table>
+
+    <h2>The View menu</h2>
+    <table class="keys ref">
+      <tr><td>Show File Date</td><td>The third line shows when the file was last changed</td></tr>
+      <tr><td>Show Last Used</td><td>The third line shows when you last started the program</td></tr>
+      <tr><td>Show Launch Count</td><td>The third line shows how many times you started it</td></tr>
+    </table>
+
+    <h2>The Edit menu</h2>
+    <p>Undo, Cut, Copy, Paste and Clear are for desk accessories. GSLauncher itself does not use them.</p>
+
+    <h2>The Help menu</h2>
+    <figure>
+      <div class="shot"><img src="../img/menu-help.png" alt=""></div>
+      <figcaption>The Help menu</figcaption>
+    </figure>
+    <p>Six pages of help. Click or press a key to put a page away.</p>
+
+    <h2>Keys in the GSLauncher window</h2>
+    <table class="keys ref">
+      <tr><td><kbd>1</kbd> to <kbd>9</kbd></td><td>Starts the slot with that number. In Edit Slots: picks it.</td></tr>
+      <tr><td><kbd>Tab</kbd></td><td>Shows the next page</td></tr>
+      <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>In Edit Slots: picks the slot before or after</td></tr>
+      <tr><td><kbd>Escape</kbd></td><td>Leaves Edit Slots</td></tr>
+    </table>
+
+    <h2>Keys in Find Apps</h2>
+    <table class="keys ref">
+      <tr><td><kbd>Return</kbd></td><td>Scan; then Add Selected</td></tr>
+      <tr><td><kbd>Escape</kbd></td><td>Cancel; during a scan, stops it</td></tr>
+      <tr><td><kbd>&uarr;</kbd> <kbd>&darr;</kbd></td><td>Moves the list one line</td></tr>
+      <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Moves the list a windowful</td></tr>
+    </table>
+
+    <h2>Keys when you type a name</h2>
+    <table class="keys ref">
+      <tr><td><kbd>Return</kbd></td><td>Accepts the name</td></tr>
+      <tr><td><kbd>Delete</kbd></td><td>Rubs out the last letter</td></tr>
+      <tr><td><kbd>Escape</kbd></td><td>Leaves things as they were</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ====================== B ====================== -->
+<section class="chapter appendix" id="appb" data-label="Appendix B" data-title="Hints and Limits">
+  <div class="opener">
+    <p class="ch-label">Appendix B</p>
+    <h1>Hints and Limits</h1>
+  </div>
+  <div class="body">
+    <h2>If something goes wrong</h2>
+    <table class="keys">
+      <tr><td>A slot says <i>not found</i></td><td>The program was moved, renamed or deleted, or its disk is not in a drive. Put the disk in, or pick the slot and choose Change Slot.</td></tr>
+      <tr><td>A program has the plain icon</td><td>No Finder icon was found for it. See Chapter 8.</td></tr>
+      <tr><td>A program does not come back to GSLauncher</td><td>It does not quit in the usual way. Make GSLauncher the startup program (Chapter 7), and restart to come back.</td></tr>
+      <tr><td>Find Apps opens every time</td><td>GSLauncher cannot write its slots file. Make sure its disk is not locked and has room.</td></tr>
+      <tr><td>&ldquo;The slots could not be saved&rdquo;</td><td>The same: the disk is locked or full.</td></tr>
+      <tr><td>Find Apps does not list a program</td><td>It is in the System folder, more than seven folders deep, or not an application or a ProDOS 8 system file. Add it with Add App.</td></tr>
+      <tr><td>The number keys do nothing</td><td>There is no slot with that number on this page.</td></tr>
+      <tr><td>A click picks a slot but does not start it</td><td>Edit Slots is on. Press <kbd>Escape</kbd>.</td></tr>
+      <tr><td>The computer starts GSLauncher, and you want the Finder</td><td>Choose Quit to Finder. To change it for good, see Chapter 7.</td></tr>
+    </table>
+
+    <h2>Limits</h2>
+    <ul>
+      <li>Four pages of 18 slots each: 72 programs</li>
+      <li>A slot&rsquo;s name: 31 letters. A page&rsquo;s name: 31 letters, of which a tab shows 12.</li>
+      <li>A program&rsquo;s path: 254 letters</li>
+      <li>Find Apps: 16 disks, 100 programs, folders seven deep</li>
+      <li>Launch counts go up to 9,999.</li>
+      <li>Dates are shown without the year.</li>
+      <li>GSLauncher starts applications and ProDOS 8 system files. It does not open documents.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="chapter index-sec" id="index" data-label="Index" data-title="Index">
+  <div class="opener">
+    <p class="ch-label">&nbsp;</p>
+    <h1>Index</h1>
+  </div>
+  <div class="index">
+    <!--INDEX-->
+  </div>
+</section>
+
+</body>
+</html>

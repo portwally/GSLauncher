@@ -6,6 +6,8 @@ GSLauncher shows your favourite applications in one small window, each with its 
 
 ![GSLauncher](docs/launcher.png)
 
+The **[User's Guide](docs/GSLauncher-Manual.pdf)** (48 pages, PDF) explains everything, set like an Apple guide of 1986.
+
 ## Features
 
 - A window of slots, five to a row, that grows and shrinks to fit. Up to **4 pages** (tabs) of up to 18 slots each.
@@ -154,6 +156,7 @@ You need [Merlin 32](https://www.brutaldeluxe.fr/products/crossdevtools/merlin/)
 | `src/genicon.s` | the plain icon for applications without one (made by `art/make_icon.py`) |
 | `src/link.s` | the Merlin 32 link file |
 | `art/make_icon.py` | draws GSLauncher's own Finder icon and the plain icon |
+| `docs/manual/` | the User's Guide: `make_manual.sh` prints `manual.html` to `docs/GSLauncher-Manual.pdf` (needs Apple Garamond, Google Chrome and poppler); `test/docshots.sh` takes its screenshots |
 
 ### Testing in MAME
 
