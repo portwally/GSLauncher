@@ -4985,7 +4985,7 @@ P4d         asc   'of a path stands for the disk you started from.',00
 P4e         asc   'You can edit the file with any text editor.',00
 P4f         asc   '(Click or press a key.)',00
 
-AboutTx     asc   '63/GSLauncher 1.1'
+AboutTx     asc   '63/GSLauncher 1.2'
             db    $0D
             put   builddate.s
             db    $0D

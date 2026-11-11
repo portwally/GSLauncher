@@ -1,4 +1,4 @@
-GSLauncher 1.1
+GSLauncher 1.2
 ==============
 
 A program launcher for the Apple IIgs (GS/OS, System 6). One window shows
