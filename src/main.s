@@ -918,7 +918,23 @@ InputBox    pha
             Tool  _SetForeColor
             pea   $000F
             Tool  _SetBackColor
-:draw       PushLong InRect
+            PushLong InRect
+            Tool  _EraseRect
+            stz   NBtn              ; Cancel and OK: real buttons
+            ldx   #InCanRect
+            jsr   :rect
+            ldx   #CancelBt
+            lda   #2
+            ldy   #0
+            jsr   NewBtn
+            ldx   #InOKRect
+            jsr   :rect
+            ldx   #OKBt
+            lda   #1
+            ldy   #1
+            jsr   NewBtn
+            jsr   DrawBtns
+:draw       PushLong InTop
             Tool  _EraseRect
             lda   #10
             sta   PX
@@ -941,19 +957,32 @@ InputBox    pha
             jsr   DrawAt
             ldx   #CaretTx
             jsr   DrawStr
-            lda   #10
-            sta   PX
-            lda   #50
-            sta   PY
-            ldx   #InHintTx
-            jsr   DrawAt
 :wait       pha
-            pea   $0028             ; keys
+            pea   $002A             ; keys and clicks
             PushLong EvRec2
             Tool  _GetNextEvent
             pla
             beq   :wait
-            lda   EvRec2+2
+            lda   EvRec2
+            cmp   #1
+            bne   :key
+            jsr   CtlHit            ; a click: on a button?
+            cmp   #1
+            bne   :nok
+            jmp   :ok
+:nok        cmp   #2
+            bne   :wait
+            jmp   :cancel
+:rect       lda   |0,x              ; OnbR = the rectangle at X
+            sta   OnbR
+            lda   |2,x
+            sta   OnbR+2
+            lda   |4,x
+            sta   OnbR+4
+            lda   |6,x
+            sta   OnbR+6
+            rts
+:key        lda   EvRec2+2
             and   #$7F
             cmp   #K_RETURN
             beq   :ok
@@ -974,13 +1003,19 @@ InputBox    pha
             cmp   #K_LEFT
             beq   :rub
             cmp   #' '
-            bcc   :wait
+            bcs   :jx1028_0
+            jmp   :wait
+:jx1028_0
             cpx   #NameMax
-            bcs   :wait
+            bcc   :jx1032_0
+            jmp   :wait
+:jx1032_0
             sta   InBuf,x           ; (and the zero after it)
             jmp   :draw
 :rub        cpx   #0
-            beq   :wait
+            bne   :jx1038_0
+            jmp   :wait
+:jx1038_0
             stz   InBuf-1,x         ; (the last one and the zero: a word)
             jmp   :draw
 :ok         jsr   :close
@@ -3246,6 +3281,7 @@ FindApps    jsr   ListVols
             stz   OState
             stz   OTop
             jsr   OnbOpen
+            jsr   MakeBtns
 :draw       jsr   OnbDraw
 :wait       pha
             pea   $000A             ; clicks and keys
@@ -3268,7 +3304,8 @@ FindApps    jsr   ListVols
             lda   OState            ; Scan
             bne   :wait
             jsr   DoScan
-            bra   :draw
+            jsr   MakeBtns
+            jmp   :draw
 :n2         cmp   #2
             bne   :n3
             lda   #1                ; All
@@ -3361,31 +3398,11 @@ OnbClick    lda   EvRec2+10
             sta   ClickPt+2
             PushLong ClickPt
             Tool  _GlobalToLocal
-            lda   ClickPt
-            cmp   #OBtnTop
-            bcc   :rows
-            cmp   #OBtnTop+20
-            bcs   :none
-            ldx   #Btns0
-            lda   OState
-            beq   :b
-            ldx   #Btns1
-:b          lda   |0,x
-            cmp   #$FFFF
-            beq   :none
-            lda   ClickPt+2
-            cmp   |0,x
-            bcc   :nx
-            cmp   |2,x
-            bcs   :nx
-            lda   |6,x
+            jsr   CtlHit            ; a button?
+            beq   :list
             rts
-:nx         txa
-            clc
-            adc   #8
-            tax
-            bra   :b
-:rows       sta   T7                ; (where, down the window)
+:list       lda   ClickPt
+            sta   T7                ; (where, down the window)
             lda   ClickPt+2
             cmp   #SbL
             bcc   :inlist
@@ -3915,7 +3932,12 @@ MsgChr      and   #$FF
             sta   MsgBuf,x
             rts
 
-DrawBtns    ldx   #Btns0
+* MakeBtns: the window's buttons made again for OState (real buttons:
+* Control Manager controls, their handles in BtnH)
+MakeBtns    PushLongAt InWin
+            Tool  _KillControls
+            stz   NBtn
+            ldx   #Btns0
             lda   OState
             beq   :b
             ldx   #Btns1
@@ -3926,29 +3948,116 @@ DrawBtns    ldx   #Btns0
             sta   OnbR+2
             lda   |2,x
             sta   OnbR+6
-            lda   #OBtnTop
+            lda   #OBtnTop+3
             sta   OnbR
-            lda   #OBtnTop+20
+            lda   #OBtnTop+16
             sta   OnbR+4
-            PushLong OnbR
-            Tool  _FrameRect
-            ldx   BtnX
-            lda   |0,x
-            clc
-            adc   #8
-            sta   PX
-            lda   #OBtnTop+14
-            sta   PY
-            ldx   BtnX
-            lda   |4,x
-            tax
-            jsr   DrawAt
+            lda   |4,x              ; its title
+            pha
+            lda   |6,x              ; what it does
+            pha
+            ldy   #0                ; (Scan and Add Selected: the default button)
+            cmp   #1
+            beq   :def
+            cmp   #5
+            bne   :mk
+:def        ldy   #1
+:mk         pla
+            plx
+            jsr   NewBtn
             lda   BtnX
             clc
             adc   #8
             tax
             bra   :b
 :x          rts
+
+* NewBtn: a button in the window InWin: OnbR its rectangle, X its title
+* (a Pascal string), A what it does, Y = 1 for the default button
+NewBtn      sta   T0
+            sty   T1
+            stx   T2
+            lda   NBtn
+            asl
+            tax
+            lda   T0
+            sta   BtnCode,x
+            pha                     ; result: the control's handle
+            pha
+            PushLongAt InWin
+            PushLong OnbR
+            pea   ^OKBt
+            lda   T2
+            pha
+            lda   T1                ; flag: 0 a button, 1 the default one
+            pha
+            pea   0                 ; value
+            pea   0                 ; param1
+            pea   0                 ; param2
+            PushLong 0              ; the simple button
+            PushLong 0              ; refCon
+            PushLong 0              ; colours
+            Tool  _NewControl
+            lda   NBtn
+            asl
+            asl
+            tax
+            pla
+            sta   BtnH,x
+            pla
+            sta   BtnH+2,x
+            inc   NBtn
+            rts
+
+DrawBtns    PushLongAt InWin
+            Tool  _DrawControls
+            rts
+
+* CtlHit: the click in EvRec2 on a button of InWin? It is tracked; A =
+* what the button does (0: none, or let go outside it)
+CtlHit      pha                     ; result: the part
+            PushLong HitCtl
+            lda   EvRec2+12         ; x, y (global)
+            pha
+            lda   EvRec2+10
+            pha
+            PushLongAt InWin
+            Tool  _FindControl
+            pla
+            beq   :none
+            pha                     ; result: the part
+            lda   EvRec2+12
+            pha
+            lda   EvRec2+10
+            pha
+            PushLong 0              ; no action procedure
+            PushLongAt HitCtl
+            Tool  _TrackControl
+            pla
+            beq   :none
+            ldx   #0                ; which one?
+            ldy   #0
+:f          cpy   NBtn
+            bcs   :none
+            lda   BtnH,x
+            cmp   HitCtl
+            bne   :n
+            lda   BtnH+2,x
+            cmp   HitCtl+2
+            beq   :got
+:n          inx
+            inx
+            inx
+            inx
+            iny
+            bra   :f
+:got        tya
+            asl
+            tax
+            lda   BtnCode,x
+            rts
+:none       lda   #0
+            rts
 
 * FoundPtr: A = a found app: Ptr = its record in the 64K buffer
 FoundPtr    sta   T0
@@ -4543,7 +4652,15 @@ Mark        dw    0
 FileLen     dw    0
 ContRect    dw    0,0,0,0
 FrRect      dw    0,0,0,0
-InRect      dw    0,0,60,300
+InRect      dw    0,0,68,300
+InTop       dw    0,0,40,300
+InCanRect   dw    46,130,59,204
+InOKRect    dw    46,218,59,282
+NBtn        dw    0
+HitCtl      adrl  0
+BtnH        ds    8*4
+BtnCode     ds    8*2
+OKBt        str   'OK'
 InField     dw    19,8,35,292
 
 PfxParms    dw    2
@@ -4715,7 +4832,7 @@ InParms     dw    78
             adrl  0
             adrl  0
             adrl  0
-            dw    80,170,140,470
+            dw    80,170,148,470
             adrl  $FFFFFFFF
             adrl  0
 
@@ -4898,7 +5015,6 @@ EmptyTx     asc   'No apps yet.',00
 Empty2Tx    asc   'Choose Add App... in the File menu.',00
 MissingTx   asc   'not found',00
 InQTx       asc   'Name for this slot:',00
-InHintTx    asc   'Return: OK     Esc: Cancel',00
 CaretTx     asc   '_',00
 
 OState      dw    0                 ; 0 which disks, 1 which apps
@@ -4939,13 +5055,11 @@ Btns1       da    12,130,AddBt,5
             da    200,258,NoneBt,3
             da    480,548,CancelBt,4
             dw    $FFFF
-ScanBt      asc   'Scan',00
-AllBt       asc   'All',00
-NoneBt      asc   'None',00
-CancelBt    asc   'Cancel',00
-AddBt       asc   'Add Selected',00
-UpBt        asc   'Up',00
-DownBt      asc   'Down',00
+ScanBt      str   'Scan'
+AllBt       str   'All'
+NoneBt      str   'None'
+CancelBt    str   'Cancel'
+AddBt       str   'Add Selected'
 TitleVTx    asc   'Find Apps: which disks?',00
 SubVTx      asc   'Check the disks to look at. GSLauncher finds S16 and ProDOS 8 applications.',00
 TitleFTx    asc   'Find Apps: the applications found',00

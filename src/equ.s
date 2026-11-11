@@ -57,6 +57,12 @@ _WaitCursor equ   $0A12
 _FixAppleMenu equ $1E05
 _GetNextEvent equ $0A06
 _FlushEvents equ  $1506
+* Control Manager
+_NewControl equ   $0910
+_KillControls equ $0B10
+_DrawControls equ $1010
+_FindControl equ  $1310
+_TrackControl equ $1510
 * Window Manager
 _NewWindow  equ   $090E
 _CloseWindow equ  $0B0E
