@@ -1,0 +1,7 @@
+@view=2
+[Tools]
+GS Commander=*:GSCommander:GSCommander|42|10 Nov 09:56
+MegaconvertGS=*:MegaconvertGS:MegaconvertGS|17|09 Nov 20:31
+BASIC=*:BASIC.System|3|05 Nov 14:02
+[Games]
+Conquer GS=*:ConquerGS2:CONQUER.SYSTEM|9|10 Nov 08:40

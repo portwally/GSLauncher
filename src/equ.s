@@ -42,6 +42,8 @@ _SetSolidPenPat equ $3704
 _MoveTo     equ   $3A04
 _FrameRect  equ   $5304
 _PaintRect  equ   $5404
+_GetMouse   equ   $0C06
+_Button     equ   $0D06
 _EraseRect  equ   $5504
 _GlobalToLocal equ $8504
 _SetForeColor equ $A004
@@ -164,3 +166,12 @@ OBtnTop     equ   150
 MaxGroups   equ   4
 TabH        equ   18
 TabW        equ   90
+
+* the scroll bar beside the list (local coordinates)
+SbL         equ   542
+SbR         equ   556
+SbCx        equ   549
+SbT         equ   36
+SbB         equ   132
+ArrowH      equ   14
+TrackH      equ   68

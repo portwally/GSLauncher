@@ -1,0 +1,3 @@
+GS Commander=*:GSCommander:GSCommander
+MegaconvertGS=*:MegaconvertGS:MegaconvertGS
+Conquer GS=*:ConquerGS2:CONQUER.SYSTEM

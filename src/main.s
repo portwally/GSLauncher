@@ -3288,8 +3288,9 @@ FindApps    jsr   ListVols
             beq   :wait
             jsr   OnbClose
             jmp   AddSelected
-:n6         jsr   OnbScroll         ; Up, Down
-            bra   :draw
+:n6         jsr   OnbScroll         ; the scroll bar and the arrow keys
+            jsr   OnbDrawList
+            jmp   :wait
 
 OnbOpen     pha
             pha
@@ -3338,8 +3339,16 @@ OnbKey      lda   EvRec2+2
             lda   #6
             rts
 :d          cmp   #K_DOWN
-            bne   :n
+            bne   :pl
             lda   #7
+            rts
+:pl         cmp   #K_LEFT
+            bne   :pr
+            lda   #8
+            rts
+:pr         cmp   #K_RIGHT
+            bne   :n
+            lda   #9
             rts
 :n          lda   #0
             rts
@@ -3376,7 +3385,15 @@ OnbClick    lda   EvRec2+10
             adc   #8
             tax
             bra   :b
-:rows       sec
+:rows       sta   T7                ; (where, down the window)
+            lda   ClickPt+2
+            cmp   #SbL
+            bcc   :inlist
+            cmp   #SbR+1
+            bcs   :none
+            jmp   ScrollClick
+:inlist     lda   T7
+            sec
             sbc   #OListTop
             bcc   :none
             ldx   #0                ; its row: / 12
@@ -3440,25 +3457,243 @@ SelAll      sta   T2
 :x          rts
 
 * OnbScroll: A = 6 (up) or 7 (down): the list a page (4) on
-OnbScroll   cmp   #6
-            bne   :dn
+OnbScroll   sta   T1
+            jsr   MaxTop
+            sta   T2
+            lda   T1
+            cmp   #8
+            bcs   :page
+            lda   #1
+            bra   :go
+:page       lda   #RowsOnb-1
+:go         sta   T3
+            lda   T1
+            and   #1                ; (even: up, odd: down)
+            bne   :down
             lda   OTop
             sec
-            sbc   #4
+            sbc   T3
+            bcs   :set
+            lda   #0
+            bra   :set
+:down       lda   OTop
+            clc
+            adc   T3
+            cmp   T2
+            bcc   :set
+            lda   T2
+:set        sta   OTop
+            rts
+
+* MaxTop: A = the highest OTop (the count less the rows, or 0)
+MaxTop      jsr   GetCount
+            sec
+            sbc   #RowsOnb
+            bcs   :x
+            lda   #0
+:x          rts
+
+* MulDiv: A * X / Y (all small)
+MulDiv      sta   T3
+            stx   T4
+            sty   T5
+            lda   #0
+:m          ldx   T4
+            beq   :md
+            clc
+            adc   T3
+            dec   T4
+            bra   :m
+:md         ldx   #0
+:d          cmp   T5
+            bcc   :r
+            sbc   T5
+            inx
+            bra   :d
+:r          txa
+            rts
+
+* ThumbCalc: where the scroll bar's thumb is (SbThumbTop, SbThumbH)
+ThumbCalc   jsr   GetCount
+            sta   T0
+            lda   #TrackH
+            ldx   #RowsOnb
+            ldy   T0
+            jsr   MulDiv
+            cmp   #8
+            bcs   :h
+            lda   #8
+:h          sta   SbThumbH
+            lda   #TrackH
+            sec
+            sbc   SbThumbH
+            sta   SbTravel
+            lda   T0
+            sec
+            sbc   #RowsOnb
+            tay
+            lda   SbTravel
+            ldx   OTop
+            jsr   MulDiv
+            clc
+            adc   #SbT+ArrowH
+            sta   SbThumbTop
+            rts
+
+* DrawScroll: the scroll bar beside the list (when it is longer than
+* the window shows)
+DrawScroll  jsr   GetCount
+            cmp   #RowsOnb+1
+            bcs   :go
+            rts
+:go         jsr   ThumbCalc
+            lda   #SbT
+            sta   OnbR
+            lda   #SbL
+            sta   OnbR+2
+            lda   #SbB
+            sta   OnbR+4
+            lda   #SbR
+            sta   OnbR+6
+            PushLong OnbR
+            Tool  _FrameRect
+            lda   #SbT+ArrowH       ; the two arrow boxes
+            sta   OnbR+4
+            PushLong OnbR
+            Tool  _FrameRect
+            lda   #SbB-ArrowH
+            sta   OnbR
+            lda   #SbB
+            sta   OnbR+4
+            PushLong OnbR
+            Tool  _FrameRect
+            lda   SbThumbTop        ; the thumb
+            sta   OnbR
+            clc
+            adc   SbThumbH
+            sta   OnbR+4
+            lda   #SbL+2
+            sta   OnbR+2
+            lda   #SbR-2
+            sta   OnbR+6
+            PushLong OnbR
+            Tool  _PaintRect
+            lda   #SbT+4
+            ldx   #0
+            jsr   DrawArrow
+            lda   #SbB-ArrowH+4
+            ldx   #1
+            jmp   DrawArrow
+
+* DrawArrow: a small triangle from row A down: X = 0 pointing up, 1 down
+DrawArrow   sta   T6
+            stx   T7
+            stz   T5
+:l          lda   T6
+            sta   OnbR
+            clc
+            adc   #2
+            sta   OnbR+4
+            lda   T7
+            bne   :dn
+            lda   #SbCx-1
+            sec
+            sbc   T5
+            sta   OnbR+2
+            lda   #SbCx+2
+            clc
+            adc   T5
+            sta   OnbR+6
+            bra   :p
+:dn         lda   #SbCx-4
+            clc
+            adc   T5
+            sta   OnbR+2
+            lda   #SbCx+5
+            sec
+            sbc   T5
+            sta   OnbR+6
+:p          PushLong OnbR
+            Tool  _PaintRect
+            lda   T6
+            clc
+            adc   #2
+            sta   T6
+            inc   T5
+            lda   T5
+            cmp   #4
+            bcc   :l
+            rts
+
+* ScrollClick: a click on the scroll bar (T7 = where, down the window):
+* A = 6 up a row, 7 down a row, 8 up a page, 9 down a page; the thumb is
+* dragged here, and 0 comes back
+ScrollClick jsr   GetCount
+            cmp   #RowsOnb+1
             bcs   :s
             lda   #0
-:s          sta   OTop
             rts
-:dn         lda   OTop
+:s          jsr   ThumbCalc
+            lda   T7
+            cmp   #SbB
+            bcs   :none
+            cmp   #SbB-ArrowH
+            bcs   :down
+            cmp   #SbT+ArrowH
+            bcc   :up
+            cmp   SbThumbTop
+            bcc   :pgup
+            lda   SbThumbTop
             clc
-            adc   #4
-            pha
-            jsr   GetCount
-            sta   T0
+            adc   SbThumbH
+            cmp   T7
+            bcc   :pgdn
+            beq   :pgdn
+            jsr   ThumbDrag
+:none       lda   #0
+            rts
+:up         lda   #6
+            rts
+:down       lda   #7
+            rts
+:pgup       lda   #8
+            rts
+:pgdn       lda   #9
+            rts
+
+* ThumbDrag: the thumb followed with the pointer until the button is up
+ThumbDrag   lda   T7
+            sec
+            sbc   SbThumbTop
+            sta   DragOff
+:l          pha
+            pea   0
+            Tool  _Button
             pla
-            cmp   T0
-            bcs   :x
+            beq   :x
+            PushLong MousePt
+            Tool  _GetMouse
+            lda   MousePt
+            sec
+            sbc   DragOff
+            sec
+            sbc   #SbT+ArrowH
+            bcs   :pos
+            lda   #0
+:pos        cmp   SbTravel
+            bcc   :ok
+            lda   SbTravel
+:ok         sta   DragPos
+            jsr   MaxTop
+            tax
+            lda   DragPos
+            ldy   SbTravel
+            jsr   MulDiv
+            cmp   OTop
+            beq   :l
             sta   OTop
+            jsr   OnbDrawList
+            bra   :l
 :x          rts
 
 * OnbDraw: the window: title, rows with check boxes, line, buttons
@@ -3480,7 +3715,16 @@ OnbDraw     PushLong OnbRect
             lda   #28
             sta   PY
             jsr   DrawAt
-            stz   RowI
+            jsr   OnbRows
+            jsr   DrawInfoLn
+            jmp   DrawBtns
+
+* OnbDrawList: just the list and its scroll bar drawn again
+OnbDrawList PushLong ListRect
+            Tool  _EraseRect
+
+* OnbRows: the rows that are in view, and the scroll bar
+OnbRows     stz   RowI
 :r          lda   RowI
             cmp   #RowsOnb
             bcs   :done
@@ -3495,8 +3739,7 @@ OnbDraw     PushLong OnbRect
             jsr   DrawRow
             inc   RowI
             bra   :r
-:done       jsr   DrawInfoLn
-            jmp   DrawBtns
+:done       jmp   DrawScroll
 
 DrawRow     lda   RowI              ; its top: 36 + 12 a row
             asl
@@ -4679,6 +4922,13 @@ FirstRun    dw    0
 OnbRect     dw    0,0,176,560
 InfoRect    dw    134,0,150,560
 OnbR        dw    0,0,0,0
+ListRect    dw    34,0,134,560
+MousePt     dw    0,0
+SbThumbTop  dw    0
+SbThumbH    dw    0
+SbTravel    dw    0
+DragOff     dw    0
+DragPos     dw    0
 Btns0       da    12,70,ScanBt,1
             da    82,128,AllBt,2
             da    140,198,NoneBt,3
@@ -4687,8 +4937,6 @@ Btns0       da    12,70,ScanBt,1
 Btns1       da    12,130,AddBt,5
             da    142,188,AllBt,2
             da    200,258,NoneBt,3
-            da    290,326,UpBt,6
-            da    338,390,DownBt,7
             da    480,548,CancelBt,4
             dw    $FFFF
 ScanBt      asc   'Scan',00

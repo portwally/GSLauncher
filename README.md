@@ -64,7 +64,7 @@ From then on GS/OS starts GSLauncher instead of the Finder. To go back to the Fi
 
 ## Using it
 
-- **Find Apps...** (Apple-F): looks for applications on your disks. In the first step you check the disks to look at (the boot disk is checked already; **All** checks every disk). Click **Scan**; Esc stops it. In the second step you check the applications you want and click **Add Selected**. **Up** and **Down** scroll the list. The System folder and ProDOS itself are left out, and an app that is already in the launcher is not added twice. It finds up to 100 apps.
+- **Find Apps...** (Apple-F): looks for applications on your disks. In the first step you check the disks to look at (the boot disk is checked already; **All** checks every disk). Click **Scan**; Esc stops it. In the second step you check the applications you want and click **Add Selected**. A **scroll bar** beside the list scrolls it: click its arrows or the track, or drag the thumb. The arrow keys scroll too (up and down a row, left and right a page). The System folder and ProDOS itself are left out, and an app that is already in the launcher is not added twice. It finds up to 100 apps.
 - **Click a slot** or press its number key (**1-9**) to start the app.
 - **Add App...** (Apple-N): pick an application in the dialog (an S16 or a ProDOS 8 SYS file). It goes into the next free slot.
 - **Click a slot** to start that application.
