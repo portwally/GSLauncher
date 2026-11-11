@@ -223,3 +223,7 @@ table.formats td:last-child { width: 1.4in; }
 /* a listing: a file's text, as the screen shows it */
 pre.listing { font-family: "Shaston", monospace; font-size: 7.6pt; line-height: 1.5; margin: .06in 0 .16in; padding: .08in .12in;
     border: .6pt solid var(--ink); background: #fff; break-inside: avoid; white-space: pre; }
+
+/* the cover's picture: the screen in a plain black frame */
+.cv-shot { position: absolute; left: .7in; right: .7in; top: 2.95in; border: 7pt solid #111; background: #111; }
+.cv-shot img { display: block; width: 100%; aspect-ratio: 4 / 3; image-rendering: pixelated; }
