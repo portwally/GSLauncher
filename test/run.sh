@@ -35,8 +35,16 @@ fi
 AMPLE_RTC="$HOME/Library/Application Support/Ample/nvram/apple2gs/rtc"
 [ -f "$AMPLE_RTC" ] && mkdir -p "$OUT/mame/apple2gs" && cp "$AMPLE_RTC" "$OUT/mame/apple2gs/rtc"
 
+# headless unless SHOW=1: no window, never the front app (SDL3 dummy video/audio, a
+# background app); SHOW=1 opens the MAME window as before
+if [ "${SHOW:-0}" != 1 ]; then
+    export SDL_VIDEO_DRIVER=dummy SDL_AUDIO_DRIVER=dummy SDL_MAC_BACKGROUND_APP=1
+    VIDEOOPT="-video none"
+else
+    VIDEOOPT=""
+fi
 KEYS="$KEYS" SHOTS="$SHOTS" DUMP_DIR="$OUT/screens" "$MAME" apple2gs -ramsize 4M -rompath "$ROMS" \
-    -sl7 cffa2 -hard1 "$DISK" -window -nomaximize -sound none -cfg_directory "$OUT/mame" \
+    -sl7 cffa2 -hard1 "$DISK" -window -nomaximize $VIDEOOPT -sound none -cfg_directory "$OUT/mame" \
     -nvram_directory "$OUT/mame" -snapshot_directory "$OUT/mame" -nothrottle -skip_gameinfo \
     -seconds_to_run "$RUN_SECONDS" -autoboot_script "$ROOT/test/dump.lua" > "$OUT/mame.log" 2>&1 || true
 cp "$DISK" "$OUT/after.po"
